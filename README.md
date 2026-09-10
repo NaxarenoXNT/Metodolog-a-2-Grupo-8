@@ -95,7 +95,7 @@ npm run migrate
 ```
 
 ### Esquema de Tablas (Referencia)
-
+```
 ==========================================
 USUARIOS
 ==========================================
@@ -190,7 +190,7 @@ NOTIFICACIONES (Factory Method: email/push/sms)
     mensaje  VARCHAR
     leida  BOOLEAN DEFAULT false
     fecha_envio  TIMESTAMP DEFAULT now()
-
+```
 
 
 
