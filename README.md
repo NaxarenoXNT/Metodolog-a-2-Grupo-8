@@ -86,7 +86,6 @@ Levanta la app en `http://localhost:5173`.
 ### Base de Datos
 ```bash
 # La base de datos que vamos a utilizar en el futuro es postgress:
-# el 
 # Crear la base de datos
 createdb nombre_db
 
@@ -190,12 +189,4 @@ NOTIFICACIONES (Factory Method: email/push/sms)
     mensaje  VARCHAR
     leida  BOOLEAN DEFAULT false
     fecha_envio  TIMESTAMP DEFAULT now()
-```
-
-
-
-### Build de producción (frontend)
-```bash
-cd frontend
-npm run build
 ```
