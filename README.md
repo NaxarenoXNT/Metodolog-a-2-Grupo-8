@@ -14,33 +14,67 @@ Una aplicación web diseñada para coordinar viajes de media distancia (ej. Bah�
 * **Base de Datos:** PostgreSQL
 * **Herramientas:** Git, GitHub, draw.io
 
-## Arquitectura y Patrones de Diseño
-Este proyecto implementa los 5 patrones de diseño creacionales clásicos para resolver reglas de negocio complejas:
+>  **Estado del proyecto:** etapa temprana. Backend y frontend levantan en modo desarrollo, pero la base de datos, Mapbox, autenticación y los patrones de diseño están **planificados y aún no implementados**. Ver [Estado actual vs. planificado](#estado-actual-vs-planificado).
+
+## Arquitectura y Patrones de Diseño (planificados)
+Este proyecto planea implementar los 5 patrones de diseño creacionales clásicos para resolver reglas de negocio complejas:
 1. **Singleton:** Gestión de la instancia única de conexión a la API de mapas.
 2. **Builder:** Ensamblaje paso a paso de los objetos de Viaje (rutas, paradas, políticas).
 3. **Prototype:** Clonación de viajes recurrentes semanales para agilizar la publicación.
 4. **Factory Method:** Instanciación dinámica del sistema de notificaciones (Email, Push, SMS).
 5. **Abstract Factory:** Creación de familias de calculadoras de costos (combustible + peaje) según el tipo de vehículo.
 
+> Estos patrones son parte del diseño/roadmap. Todavía **no están implementados** en el código.
+
 ## Flujo de Trabajo (Git Flow)
 1. La rama `main` contiene código estable.
 2. Todo el desarrollo se hace en ramas con el prefijo `feature/` (ej. `feature/login-usuarios`).
 3. Se requiere un Pull Request y revisión de al menos 1 compañero antes de hacer merge.
 
-## Dependencias
+## Requisitos previos
+* **Node.js** v20.19+ o v22.12+ (requerido por Vite 8 — verificá con `node -v`)
+* **npm** v9 o superior (verificá con `npm -v`)
+* *(Futuro)* **PostgreSQL** v14 o superior — aún no es necesario para levantar el proyecto.
+* *(Futuro)* Cuenta y **API Key** de Mapbox — aún no es necesaria para levantar el proyecto.
 
-### Requisitos previos
-* **Node.js** v18 o superior
-* **npm** v9 o superior (o `yarn`/`pnpm` si el equipo lo prefiere)
-* **PostgreSQL** v14 o superior
-* Cuenta y **API Key** de Mapbox
+## Cómo levantar el proyecto desde cero (Quick Start)
+
+### 1. Clonar el repositorio
+```bash
+git clone https://github.com/NaxarenoXNT/Metodolog-a-2-Grupo-8.git
+cd Metodolog-a-2-Grupo-8
+```
+
+### 2. Backend
+```bash
+cd backend
+npm install
+copy .env.example .env   # Windows (en Linux/macOS: cp .env.example .env)
+npm run dev
+```
+Levanta el servidor en `http://localhost:3000`.
+
+> Probalo entrando a `http://localhost:3000/health` (debería devolver `{"status":"ok",...}`).
+
+### 3. Frontend (en otra terminal)
+```bash
+cd frontend
+npm install
+copy .env.example .env   # Windows (en Linux/macOS: cp .env.example .env)
+npm run dev
+```
+Levanta la app en `http://localhost:5173`.
+
+---
+
+## Dependencias
 
 ### Frontend
 ```bash
 cd frontend
 npm install
 ```
-Principales paquetes: `react`, `vite`, `tailwindcss`, `mapbox-gl` (o `react-map-gl`), `axios`, `react-router-dom`.
+Principales paquetes: `react`, `vite`, `tailwindcss`, `mapbox-gl` / `react-map-gl`, `axios`, `react-router-dom`.
 
 ### Backend
 ```bash
@@ -51,21 +85,25 @@ Principales paquetes: `express`, `pg` (cliente de PostgreSQL), `dotenv`, `cors`,
 
 ## Configuración de Variables de Entorno
 
-Crear un archivo `.env` en la carpeta `backend/` con el siguiente contenido:
+Crear un archivo `.env` en la carpeta `backend/` a partir de `backend/.env.example`:
 
 ```env
 PORT=3000
-DATABASE_URL=postgresql://usuario:contraseña@localhost:5432/nombre_db
-JWT_SECRET=tu_secreto_aqui
-MAPBOX_API_KEY=tu_api_key_aqui
+# DATABASE_URL=postgresql://usuario:contraseña@localhost:5432/nombre_db
+# JWT_SECRET=tu_secreto_aqui
+# MAPBOX_API_KEY=tu_api_key_aqui
 ```
 
-Y otro `.env` en la carpeta `frontend/`:
+Por ahora solo `PORT` se usa realmente. Las demás están **comentadas y reservadas** para cuando se integren la base de datos, la autenticación y Mapbox.
+
+Y otro `.env` en la carpeta `frontend/` a partir de `frontend/.env.example`:
 
 ```env
 VITE_API_URL=http://localhost:3000
-VITE_MAPBOX_TOKEN=tu_api_key_aqui
+VITE_MAPBOX_TOKEN=
 ```
+
+`VITE_API_URL` apunta al backend. `VITE_MAPBOX_TOKEN` se usará cuando se integre Mapbox.
 
 ## Comandos de Ejecución
 
@@ -74,7 +112,7 @@ VITE_MAPBOX_TOKEN=tu_api_key_aqui
 cd backend
 npm run dev
 ```
-Levanta el servidor en `http://localhost:3000`.
+Levanta el servidor en `http://localhost:3000` (usa `nodemon`, se reinicia al guardar cambios).
 
 ### Frontend (modo desarrollo)
 ```bash
@@ -83,17 +121,34 @@ npm run dev
 ```
 Levanta la app en `http://localhost:5173`.
 
-### Base de Datos
-```bash
-# La base de datos que vamos a utilizar en el futuro es postgress:
-# Crear la base de datos
-createdb nombre_db
+> También hay: `npm run build` (build de producción) y `npm run lint` (lint del frontend).
 
-# Ejecutar migraciones (si usan alguna herramienta como Knex o Prisma)
-npm run migrate
-```
+### Base de Datos (pendiente)
+La base de datos PostgreSQL **todavía no está conectada** al código. Cuando se integre, se definirán las migraciones y un comando para ejecutarlas (por ejemplo con Knex o Prisma). Hoy **no existe** el script `npm run migrate`.
 
-### Esquema de Tablas (Referencia)
+## Estado actual vs. planificado
+
+| Área | Estado hoy | Planificado |
+|---|---|---|
+| Backend Express | ✅ Levanta con endpoints de prueba (`/health`, `/api/viajes` con datos mock) | Endpoints reales conectados a BD |
+| Frontend React + Vite | ✅ Levanta (plantilla base) | UI de la plataforma |
+| Tailwind CSS | ✅ Configurado | Uso en componentes |
+| Base de datos PostgreSQL | ⬜ No conectada | Modelos, migraciones y CRUD |
+| Migraciones | ⬜ No existe script `migrate` | Definir con Knex o Prisma |
+| Autenticación (JWT + bcrypt) | ⬜ No implementada (deps instaladas) | Login/registro |
+| Mapbox | ⬜ No integrada | Rutas, paradas y cálculo de distancias |
+| Patrones de diseño | ⬜ No implementados | Singleton, Builder, Prototype, Factory Method, Abstract Factory |
+
+
+### Convenciones
+* Frontend: mantené `npm run lint` sin errores (`cd frontend && npm run lint`).
+* Backend: usá `npm run dev` (nodemon) durante el desarrollo.
+
+---
+
+## Esquema de Tablas (Referencia de diseño)
+
+> ⚠️ El esquema siguiente es **referencia de diseño**. Todavía **no hay migraciones** ni conexión activa a la base de datos.
 ```
 ==========================================
 USUARIOS

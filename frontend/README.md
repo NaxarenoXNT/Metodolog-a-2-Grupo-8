@@ -1,16 +1,22 @@
-# React + Vite
+# Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend de la **Plataforma de Logística para Viajes Frecuentes**, construido con React + Vite + Tailwind CSS.
 
-Currently, two official plugins are available:
+Para instrucciones completas de instalación y ejecución, ver el [README principal](../README.md).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Levantar en modo desarrollo
 
-## React Compiler
+```bash
+npm install
+copy .env.example .env   # Windows (en Linux/macOS: cp .env.example .env)
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+La app corre en `http://localhost:5173`.
 
-## Expanding the ESLint configuration
+## Scripts disponibles
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+* `npm run dev` — servidor de desarrollo con HMR.
+* `npm run build` — build de producción.
+* `npm run lint` — lint con ESLint.
+* `npm run preview` — previsualiza el build.
