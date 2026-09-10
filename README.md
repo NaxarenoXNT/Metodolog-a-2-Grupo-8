@@ -94,11 +94,11 @@ createdb nombre_db
 npm run migrate
 ```
 
-#### Esquema de Tablas (Referencia)
+### Esquema de Tablas (Referencia)
 
--- ==========================================
--- USUARIOS
--- ==========================================
+==========================================
+USUARIOS
+==========================================
 **usuarios**
     id  PK, SERIAL
     nombre  VARCHAR
@@ -107,9 +107,9 @@ npm run migrate
     telefono  VARCHAR NULL
     fecha_registro  TIMESTAMP DEFAULT now()
 
--- ==========================================
--- VEHICULOS (para calcular consumo/costos)
--- ==========================================
+==========================================
+VEHICULOS (para calcular consumo/costos)
+==========================================
 **vehiculos**
     id  PK, SERIAL
     usuario_id  FK -> usuarios.id
@@ -119,9 +119,9 @@ npm run migrate
     consumo_l_100km  NUMERIC   -- litros cada 100km
     tipo_combustible  VARCHAR  -- nafta, diesel, gnc
 
--- ==========================================
--- RUTAS FRECUENTES (plantillas, reutilizables)
--- ==========================================
+==========================================
+RUTAS FRECUENTES (plantillas, reutilizables)
+==========================================
 **rutas_frecuentes**
     id  PK, SERIAL
     usuario_id  FK -> usuarios.id
@@ -133,9 +133,9 @@ npm run migrate
     distancia_km  NUMERIC NULL    -- cacheado desde Mapbox
     es_recurrente  BOOLEAN DEFAULT false  -- soporte para Prototype
 
--- ==========================================
--- VIAJES (instancias concretas, publicadas)
--- ==========================================
+==========================================
+VIAJES (instancias concretas, publicadas)
+==========================================
 **viajes**
     id  PK, SERIAL
     ruta_frecuente_id  FK -> rutas_frecuentes.id NULL  -- si nace de un clon
@@ -147,9 +147,9 @@ npm run migrate
     costo_estimado  NUMERIC   -- calculado (combustible + peajes)
     estado  VARCHAR   -- pendiente, en_curso, finalizado, cancelado
 
--- ==========================================
--- PARADAS (puntos intermedios de un viaje)
--- ==========================================
+==========================================
+PARADAS (puntos intermedios de un viaje)
+==========================================
 **paradas**
     id  PK, SERIAL
     viaje_id  FK -> viajes.id
@@ -158,9 +158,9 @@ npm run migrate
     lng  NUMERIC
     descripcion  VARCHAR NULL
 
--- ==========================================
--- PASAJEROS POR VIAJE (relación N a N)
--- ==========================================
+==========================================
+PASAJEROS POR VIAJE (relación N a N)
+==========================================
 **viaje_pasajeros**
     id  PK, SERIAL
     viaje_id  FK -> viajes.id
@@ -168,9 +168,9 @@ npm run migrate
     monto_pagar  NUMERIC   -- división de gastos
     estado_pago  VARCHAR   -- pendiente, pagado
 
--- ==========================================
--- ESTACIONES DE SERVICIO (para "mejores rutas para cargar nafta")
--- ==========================================
+==========================================
+ESTACIONES DE SERVICIO (para "mejores rutas para cargar nafta")
+==========================================
 **estaciones_servicio**
     id  PK, SERIAL
     nombre  VARCHAR
@@ -180,9 +180,9 @@ npm run migrate
     precio_nafta  NUMERIC NULL
     fecha_actualizacion  TIMESTAMP
 
--- ==========================================
--- NOTIFICACIONES (Factory Method: email/push/sms)
--- ==========================================
+==========================================
+NOTIFICACIONES (Factory Method: email/push/sms)
+==========================================
 **notificaciones**
     id  PK, SERIAL
     usuario_id  FK -> usuarios.id
