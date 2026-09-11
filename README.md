@@ -9,9 +9,9 @@ Una aplicación web diseñada para coordinar viajes de media distancia (ej. Bah�
 
 
 ## Stack Tecnológico
-* **Frontend:** React, Vite, Tailwind CSS, Mapbox API
+* **Frontend:** React, Vite, Tailwind CSS (Mapbox API a integrar)
 * **Backend:** Node.js/Express 
-* **Base de Datos:** PostgreSQL
+* **Base de Datos:** PostgreSQL (a integrar)
 * **Herramientas:** Git, GitHub, draw.io
 
 >  **Estado del proyecto:** etapa temprana. Backend y frontend levantan en modo desarrollo, pero la base de datos, Mapbox, autenticación y los patrones de diseño están **planificados y aún no implementados**. Ver [Estado actual vs. planificado](#estado-actual-vs-planificado).
@@ -28,8 +28,9 @@ Este proyecto planea implementar los 5 patrones de diseño creacionales clásico
 
 ## Flujo de Trabajo (Git Flow)
 1. La rama `main` contiene código estable.
-2. Todo el desarrollo se hace en ramas con el prefijo `feature/` (ej. `feature/login-usuarios`).
-3. Se requiere un Pull Request y revisión de al menos 1 compañero antes de hacer merge.
+2. La rama `dev` es la de integración: ahí se mergean los cambios antes de llegar a `main`.
+3. Todo el desarrollo se hace en ramas con el prefijo `feature/` (ej. `feature/login-usuarios`), creadas desde `dev`.
+4. Se requiere un Pull Request y revisión de al menos 1 compañero antes de hacer merge.
 
 ## Requisitos previos
 * **Node.js** v20.19+ o v22.12+ (requerido por Vite 8 — verificá con `node -v`)
@@ -48,7 +49,7 @@ cd Metodolog-a-2-Grupo-8
 ### 2. Backend
 ```bash
 cd backend
-npm install
+npm ci
 copy .env.example .env   # Windows (en Linux/macOS: cp .env.example .env)
 npm run dev
 ```
@@ -59,7 +60,7 @@ Levanta el servidor en `http://localhost:3000`.
 ### 3. Frontend (en otra terminal)
 ```bash
 cd frontend
-npm install
+npm ci
 copy .env.example .env   # Windows (en Linux/macOS: cp .env.example .env)
 npm run dev
 ```
@@ -72,14 +73,14 @@ Levanta la app en `http://localhost:5173`.
 ### Frontend
 ```bash
 cd frontend
-npm install
+npm ci
 ```
 Principales paquetes: `react`, `vite`, `tailwindcss`, `mapbox-gl` / `react-map-gl`, `axios`, `react-router-dom`.
 
 ### Backend
 ```bash
 cd backend
-npm install
+npm ci
 ```
 Principales paquetes: `express`, `pg` (cliente de PostgreSQL), `dotenv`, `cors`, `jsonwebtoken`, `bcrypt`.
 
