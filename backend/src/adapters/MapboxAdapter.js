@@ -15,14 +15,14 @@
       throw new Error('Destino inválido: se espera { lat, lng }');
     }
 
-    const coordinates = ${origen.lng},;,;
-    const url = ${this.baseUrl}/?geometries=geojson&overview=full&access_token=;
+    const coordinates = `${origen.lng},${origen.lat};${destino.lng},${destino.lat}`;
+    const url = `${this.baseUrl}/${coordinates}?geometries=geojson&overview=full&access_token=${this.token}`;
 
     const response = await fetch(url);
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(Error al consultar Mapbox Directions:  );
+      throw new Error(`Error al consultar Mapbox Directions: ${response.status} ${errorText}`);
     }
 
     const data = await response.json();
