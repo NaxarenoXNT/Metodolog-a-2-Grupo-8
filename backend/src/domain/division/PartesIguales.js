@@ -1,14 +1,15 @@
-﻿class PartesIguales {
+﻿const repartir = require('./repartir');
+
+class PartesIguales {
   dividir(costoTotal, pasajeros) {
     if (costoTotal <= 0) return [];
     if (!Array.isArray(pasajeros) || pasajeros.length === 0) return [];
 
-    const cantidadPasajeros = pasajeros.length;
-    const montoPorPasajero = costoTotal / cantidadPasajeros;
+    const montos = repartir(costoTotal, pasajeros.map(() => 1));
 
-    return pasajeros.map((pasajero) => ({
+    return pasajeros.map((pasajero, indice) => ({
       usuarioId: pasajero.usuarioId,
-      monto: Number(montoPorPasajero.toFixed(2)),
+      monto: montos[indice],
     }));
   }
 }

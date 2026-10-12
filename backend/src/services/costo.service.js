@@ -1,38 +1,82 @@
-﻿const estrategias = require('../domain/division');
-const { precioPorKm } = require('../config/precios');
+﻿const estrategiasPorDefecto = require('../domain/division');
+const preciosPorDefecto = require('../config/precios');
+const { ViajeNoEncontradoError } = require('./viaje.service');
+
+class ModoDivisionInvalidoError extends Error {
+  constructor(modo, modosValidos) {
+    super(
+      `Modo de división no soportado: ${modo}. Modos válidos: ${modosValidos.join(', ')}`,
+    );
+    this.name = 'ModoDivisionInvalidoError';
+    this.statusCode = 400;
+    this.code = 'MODO_DIVISION_INVALIDO';
+  }
+}
+
+class DistanciaNoDisponibleError extends Error {
+  constructor(id) {
+    super(`El viaje ${id} no tiene una distancia calculada`);
+    this.name = 'DistanciaNoDisponibleError';
+    this.statusCode = 422;
+    this.code = 'DISTANCIA_NO_DISPONIBLE';
+  }
+}
 
 class CostoService {
-  constructor(viajeRepo) {
-    this.viajeRepo = viajeRepo;
+  constructor({
+    viajeRepository,
+    estrategias = estrategiasPorDefecto,
+    precios = preciosPorDefecto,
+  } = {}) {
+    if (!viajeRepository) {
+      throw new Error('CostoService necesita un repositorio de viajes');
+    }
+
+    this.viajeRepository = viajeRepository;
+    this.estrategias = estrategias;
+    this.precios = precios;
   }
 
-  async calcularCostoTotal(viajeId) {
-    const viaje = await this.viajeRepo.obtenerViajePorId(viajeId);
-    if (!viaje) {
-      throw new Error('Viaje no encontrado');
-    }
-
-    const distanciaKm = Number(viaje.distanciaTotalKm) || 0;
-    const costoTotal = distanciaKm * precioPorKm;
-
-    return Number(costoTotal.toFixed(2));
+  calcularCostoTotal(viajeId) {
+    return this.costoDe(this.obtenerViaje(viajeId));
   }
 
-  async dividirGastos(viajeId, modo = 'iguales') {
-    const costoTotal = await this.calcularCostoTotal(viajeId);
-    const viaje = await this.viajeRepo.obtenerViajePorId(viajeId);
+  dividirGastos(viajeId, modo = 'iguales') {
+    const viaje = this.obtenerViaje(viajeId);
+
+    // Object.hasOwn evita que ?modo=toString o ?modo=constructor encuentren
+    // métodos heredados de Object en lugar de una estrategia.
+    if (!Object.hasOwn(this.estrategias, modo)) {
+      throw new ModoDivisionInvalidoError(modo, Object.keys(this.estrategias));
+    }
+
+    return this.estrategias[modo].dividir(
+      this.costoDe(viaje),
+      viaje.pasajeros ?? [],
+    );
+  }
+
+  obtenerViaje(id) {
+    const viaje = this.viajeRepository.buscarPorId(id);
+
     if (!viaje) {
-      throw new Error('Viaje no encontrado');
+      throw new ViajeNoEncontradoError(id);
     }
 
-    const estrategia = estrategias[modo];
-    if (!estrategia) {
-      throw new Error(`Modo de división no soportado: ${modo}`);
+    return viaje;
+  }
+
+  costoDe(viaje) {
+    const distanciaKm = viaje.distanciaKm;
+
+    if (!Number.isFinite(distanciaKm)) {
+      throw new DistanciaNoDisponibleError(viaje.id);
     }
 
-    const resultado = estrategia.dividir(costoTotal, viaje.pasajeros || []);
-    return resultado;
+    return Number((distanciaKm * this.precios.precioPorKm).toFixed(2));
   }
 }
 
 module.exports = CostoService;
+module.exports.ModoDivisionInvalidoError = ModoDivisionInvalidoError;
+module.exports.DistanciaNoDisponibleError = DistanciaNoDisponibleError;
