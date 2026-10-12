@@ -2,9 +2,17 @@ const express = require('express');
 const cors = require('cors');
 
 const crearViajesRouter = require('./routes/viajes.routes');
-const crearCostosRouter = require('./routes/costos.routes');       
+const crearCostosRouter = require('./routes/costos.routes');
+const crearPasajerosRouter = require('./routes/pasajeros.routes');
 const ViajeService = require('./services/viaje.service');
-const CostoService = require('./services/costo.service');          
+const CostoService = require('./services/costo.service');
+const PasajeroService = require('./services/pasajero.service');
+const PublicadorEventos = require('./domain/eventos/PublicadorEventos');
+const { EVENTOS_PASAJEROS } = require('./domain/eventos/PublicadorEventos');
+const ActualizarAsientos = require('./observadores/ActualizarAsientos');
+const RecalcularDivision = require('./observadores/RecalcularDivision');
+const AvisarConductor = require('./observadores/AvisarConductor');
+const NotificadorConsola = require('./adapters/NotificadorConsola');
 const ViajeRepositoryMemoria = require('./repositories/viaje.repository.memoria');
 
 function crearApp(dependencias = {}) {
@@ -18,8 +26,18 @@ function crearApp(dependencias = {}) {
       proveedorRutas: dependencias.proveedorRutas,
       ahora: dependencias.ahora,
     });
-  const costoService =                                              
+  const costoService =
     dependencias.costoService || new CostoService({ viajeRepository });
+  const pasajeroService =
+    dependencias.pasajeroService ||
+    new PasajeroService({
+      viajeRepository,
+      publicador: crearPublicadorPasajeros({
+        viajeRepository,
+        costoService,
+        notificador: dependencias.notificador || new NotificadorConsola(),
+      }),
+    });
 
   app.use(cors());
   app.use(express.json());
@@ -29,7 +47,8 @@ function crearApp(dependencias = {}) {
   });
 
   app.use('/api/viajes', crearViajesRouter({ viajeService }));
-  app.use('/api/viajes', crearCostosRouter({ costoService }));      
+  app.use('/api/viajes', crearCostosRouter({ costoService }));
+  app.use('/api/viajes', crearPasajerosRouter({ pasajeroService }));
 
   app.use((error, req, res, next) => {
     if (res.headersSent) {
@@ -51,6 +70,23 @@ function crearApp(dependencias = {}) {
   });
 
   return app;
+}
+
+function crearPublicadorPasajeros({ viajeRepository, costoService, notificador }) {
+  const publicador = new PublicadorEventos();
+  const observadores = [
+    new ActualizarAsientos({ viajeRepository }),
+    new RecalcularDivision({ viajeRepository, costoService }),
+    new AvisarConductor({ viajeRepository, notificador }),
+  ];
+
+  for (const evento of Object.values(EVENTOS_PASAJEROS)) {
+    for (const observador of observadores) {
+      publicador.suscribir(evento, observador);
+    }
+  }
+
+  return publicador;
 }
 
 module.exports = crearApp;

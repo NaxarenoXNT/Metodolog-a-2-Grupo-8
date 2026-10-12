@@ -114,8 +114,3 @@ objetos relacionados que crear juntos. Un precio distinto es un dato nuevo en
 Si aparecen reglas de costo realmente distintas (peajes, tarifas por vehículo con
 lógica propia), habrá que refactorizar. Se reevalúa en ese momento.
 
-## Pendiente con el integrante 3
-
-`PorKilometro` lee `pasajero.kmRecorridos` y ambas estrategias leen
-`pasajero.usuarioId`. La feature de pasajeros tiene que guardar esos campos en
-`viaje.pasajeros`.
