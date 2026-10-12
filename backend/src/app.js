@@ -2,7 +2,9 @@ const express = require('express');
 const cors = require('cors');
 
 const crearViajesRouter = require('./routes/viajes.routes');
+const crearCostosRouter = require('./routes/costos.routes');       
 const ViajeService = require('./services/viaje.service');
+const CostoService = require('./services/costo.service');          
 const ViajeRepositoryMemoria = require('./repositories/viaje.repository.memoria');
 
 function crearApp(dependencias = {}) {
@@ -16,6 +18,8 @@ function crearApp(dependencias = {}) {
       proveedorRutas: dependencias.proveedorRutas,
       ahora: dependencias.ahora,
     });
+  const costoService =                                              
+    dependencias.costoService || new CostoService({ viajeRepository });
 
   app.use(cors());
   app.use(express.json());
@@ -25,6 +29,7 @@ function crearApp(dependencias = {}) {
   });
 
   app.use('/api/viajes', crearViajesRouter({ viajeService }));
+  app.use('/api/viajes', crearCostosRouter({ costoService }));      
 
   app.use((error, req, res, next) => {
     if (res.headersSent) {

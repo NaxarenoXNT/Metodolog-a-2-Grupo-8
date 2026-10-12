@@ -72,3 +72,99 @@ describe('CostoService con el repositorio en memoria real', () => {
     }
   });
 });
+
+describe('Endpoints de costos', () => {
+  const request = require('supertest');
+  const crearApp = require('../src/app');
+
+  function crearAppConViajes(viajes) {
+    return crearApp({ viajeRepository: new ViajeRepositoryMemoria(viajes) });
+  }
+
+  const viajes = [
+    {
+      id: 1,
+      distanciaKm: 10,
+      pasajeros: [
+        { usuarioId: 'u1', kmRecorridos: 2 },
+        { usuarioId: 'u2', kmRecorridos: 8 },
+      ],
+    },
+    { id: 2, distanciaKm: null },
+  ];
+
+  test('GET /api/viajes/:id/costo devuelve el costo total', async () => {
+    const respuesta = await request(crearAppConViajes(viajes))
+      .get('/api/viajes/1/costo')
+      .expect(200);
+
+    assert.deepEqual(respuesta.body, { viajeId: 1, costoTotal: 1500 });
+  });
+
+  test('GET /api/viajes/:id/division usa "iguales" por defecto', async () => {
+    const respuesta = await request(crearAppConViajes(viajes))
+      .get('/api/viajes/1/division')
+      .expect(200);
+
+    assert.deepEqual(respuesta.body, {
+      viajeId: 1,
+      modo: 'iguales',
+      division: [
+        { usuarioId: 'u1', monto: 750 },
+        { usuarioId: 'u2', monto: 750 },
+      ],
+    });
+  });
+
+  test('GET /api/viajes/:id/division?modo=km reparte según los km', async () => {
+    const respuesta = await request(crearAppConViajes(viajes))
+      .get('/api/viajes/1/division?modo=km')
+      .expect(200);
+
+    assert.deepEqual(respuesta.body.division, [
+      { usuarioId: 'u1', monto: 300 },
+      { usuarioId: 'u2', monto: 1200 },
+    ]);
+  });
+
+  test('el costo de un viaje publicado usa la distancia del proveedor', async () => {
+    const app = crearApp({
+      ahora: () => new Date('2026-10-11T12:00:00.000Z'),
+      proveedorRutas: { calcularDistancia: async () => 690 },
+    });
+
+    const { body: viaje } = await request(app)
+      .post('/api/viajes')
+      .send({
+        vehiculo: { capacidadAsientos: 4 },
+        fecha: '2026-10-12T12:00:00.000Z',
+        asientosDisponibles: 3,
+        origen: { lat: -38.7183, lng: -62.2663 },
+        destino: { lat: -34.6037, lng: -58.3816 },
+      })
+      .expect(201);
+
+    const respuesta = await request(app)
+      .get(`/api/viajes/${viaje.id}/costo`)
+      .expect(200);
+
+    // 690 km * 150 = 103500
+    assert.equal(respuesta.body.costoTotal, 103500);
+  });
+
+  test('responde 404, 400, 400 y 422 en los casos de error', async () => {
+    const app = crearAppConViajes(viajes);
+
+    const casos = [
+      ['/api/viajes/999/costo', 404, 'VIAJE_NO_ENCONTRADO'],
+      ['/api/viajes/abc/costo', 400, 'ID_INVALIDO'],
+      ['/api/viajes/1/division?modo=xyz', 400, 'MODO_DIVISION_INVALIDO'],
+      ['/api/viajes/2/costo', 422, 'DISTANCIA_NO_DISPONIBLE'],
+    ];
+
+    for (const [url, status, codigo] of casos) {
+      const respuesta = await request(app).get(url).expect(status);
+      assert.equal(respuesta.body.error, codigo, url);
+    }
+  });
+});
