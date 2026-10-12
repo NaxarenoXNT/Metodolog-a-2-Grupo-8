@@ -4,6 +4,11 @@ const assert = require('node:assert/strict');
 const CostoService = require('../src/services/costo.service');
 const ViajeRepositoryMemoria = require('../src/repositories/viaje.repository.memoria');
 const PartesIguales = require('../src/domain/division/PartesIguales');
+const PorKilometro = require('../src/domain/division/PorKilometro');
+
+function sumar(division) {
+  return Math.round(division.reduce((s, parte) => s + parte.monto * 100, 0)) / 100;
+}
 
 function crearServicio(viajes) {
   return new CostoService({
@@ -24,6 +29,56 @@ describe('Estrategia PartesIguales', () => {
       { usuarioId: 'u2', monto: 300 },
       { usuarioId: 'u3', monto: 300 },
     ]);
+  });
+
+  test('reparte los centavos sobrantes para que la suma dé el total', () => {
+    const resultado = new PartesIguales().dividir(1000, [
+      { usuarioId: 'u1' },
+      { usuarioId: 'u2' },
+      { usuarioId: 'u3' },
+    ]);
+
+    assert.deepEqual(
+      resultado.map((parte) => parte.monto),
+      [333.34, 333.33, 333.33],
+    );
+    assert.equal(sumar(resultado), 1000);
+  });
+});
+
+describe('Estrategia PorKilometro', () => {
+  test('reparte proporcionalmente a los km recorridos', () => {
+    const resultado = new PorKilometro().dividir(1000, [
+      { usuarioId: 'u1', kmRecorridos: 100 },
+      { usuarioId: 'u2', kmRecorridos: 300 },
+    ]);
+
+    assert.deepEqual(resultado, [
+      { usuarioId: 'u1', monto: 250 },
+      { usuarioId: 'u2', monto: 750 },
+    ]);
+  });
+
+  test('la suma da el total aunque la proporción no sea exacta', () => {
+    const resultado = new PorKilometro().dividir(100, [
+      { usuarioId: 'u1', kmRecorridos: 1 },
+      { usuarioId: 'u2', kmRecorridos: 1 },
+      { usuarioId: 'u3', kmRecorridos: 1 },
+    ]);
+
+    assert.equal(sumar(resultado), 100);
+  });
+
+  test('sin km cargados reparte en partes iguales', () => {
+    const resultado = new PorKilometro().dividir(900, [
+      { usuarioId: 'u1' },
+      { usuarioId: 'u2', kmRecorridos: 0 },
+    ]);
+
+    assert.deepEqual(
+      resultado.map((parte) => parte.monto),
+      [450, 450],
+    );
   });
 });
 

@@ -1,31 +1,24 @@
-﻿class PorKilometro {
+﻿const repartir = require('./repartir');
+
+class PorKilometro {
   dividir(costoTotal, pasajeros) {
     if (costoTotal <= 0) return [];
     if (!Array.isArray(pasajeros) || pasajeros.length === 0) return [];
 
-    const totalKm = pasajeros.reduce(
-      (sum, pasajero) => sum + (Number(pasajero.kmRecorridos) || 0),
-      0
-    );
-
-    if (totalKm <= 0) {
-      const cantidadPasajeros = pasajeros.length;
-      const montoPorPasajero = costoTotal / cantidadPasajeros;
-
-      return pasajeros.map((pasajero) => ({
-        usuarioId: pasajero.usuarioId,
-        monto: Number(montoPorPasajero.toFixed(2)),
-      }));
-    }
-
-    return pasajeros.map((pasajero) => {
-      const km = Number(pasajero.kmRecorridos) || 0;
-      const monto = (costoTotal * km) / totalKm;
-      return {
-        usuarioId: pasajero.usuarioId,
-        monto: Number(monto.toFixed(2)),
-      };
+    const kms = pasajeros.map((pasajero) => {
+      const km = Number(pasajero.kmRecorridos);
+      return Number.isFinite(km) && km > 0 ? km : 0;
     });
+    const totalKm = kms.reduce((suma, km) => suma + km, 0);
+
+    // Si nadie tiene km cargados, se reparte en partes iguales.
+    const pesos = totalKm > 0 ? kms : kms.map(() => 1);
+    const montos = repartir(costoTotal, pesos);
+
+    return pasajeros.map((pasajero, indice) => ({
+      usuarioId: pasajero.usuarioId,
+      monto: montos[indice],
+    }));
   }
 }
 
