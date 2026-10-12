@@ -38,6 +38,19 @@ class ViajeRepositoryMemoria {
     this.viajes.push(viajeGuardado);
     return clonar(viajeGuardado);
   }
+
+  actualizar(viaje) {
+    const indice = this.viajes.findIndex(
+      (candidato) => candidato.id === viaje.id,
+    );
+
+    if (indice === -1) {
+      return null;
+    }
+
+    this.viajes[indice] = clonar(viaje);
+    return clonar(this.viajes[indice]);
+  }
 }
 
 function clonar(valor) {
