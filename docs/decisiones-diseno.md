@@ -2,12 +2,13 @@
 
 ## Objetivo y alcance
 
-Este documento reúne el análisis de las features de viajes, costos y pasajeros.
-Su objetivo es dejar una única evidencia localizable para el Taller II: qué
-código se analizó, qué se detectó, qué alternativas se consideraron, qué se
-decidió y cuáles son los beneficios y costos de esas decisiones.
+Este documento reúne las decisiones de diseño tomadas para las features de
+viajes, costos y pasajeros. Su objetivo es dejar una única memoria localizable
+para el Taller II: qué problema resuelve cada parte, qué código interviene, qué
+alternativas consideramos, qué decidimos y cuáles son los beneficios y costos de
+esas decisiones.
 
-El análisis se concentra en el backend porque allí están las reglas de negocio y
+El documento se concentra en el backend porque allí están las reglas de negocio y
 los patrones de diseño. El frontend continúa como una plantilla de Vite y no se
 lo presenta como una funcionalidad terminada.
 
@@ -26,7 +27,7 @@ No se eligieron patrones por cantidad. Se implementaron solo donde resuelven una
 variación o responsabilidad concreta; en los demás casos se documentó por qué
 agregarlos ahora sería sobreingeniería.
 
-## Código analizado
+## Código involucrado
 
 - Composición y manejo HTTP: [`backend/src/app.js`](../backend/src/app.js),
   [`backend/src/routes/`](../backend/src/routes/) y
@@ -41,11 +42,11 @@ agregarlos ahora sería sobreingeniería.
 - Pasajeros y eventos: [`pasajero.service.js`](../backend/src/services/pasajero.service.js),
   [`PublicadorEventos.js`](../backend/src/domain/eventos/PublicadorEventos.js) y
   [`observadores/`](../backend/src/observadores/).
-- Evidencia automatizada: [`viajes.test.js`](../backend/test/viajes.test.js),
+- Pruebas automatizadas: [`viajes.test.js`](../backend/test/viajes.test.js),
   [`costos.test.js`](../backend/test/costos.test.js) y
   [`pasajeros.test.js`](../backend/test/pasajeros.test.js).
 
-## Diagnóstico transversal
+## Criterios transversales de diseño y mantenibilidad
 
 ### Clean Code y code smells
 
@@ -98,7 +99,7 @@ Smells y riesgos detectados:
 No se afirma que el sistema “aplica SOLID completo”. Estas son evidencias
 puntuales, y también se conservan límites deliberados del prototipo.
 
-## Análisis 1: publicación de viajes
+## Decisión 1: publicación de viajes
 
 ### Endpoints
 
@@ -106,14 +107,14 @@ puntuales, y también se conservan límites deliberados del prototipo.
 - `GET /api/viajes`: lista los viajes.
 - `GET /api/viajes/:id`: devuelve un viaje o `404`.
 
-### 1. Código analizado
+### 1. Código involucrado
 
 - [`ViajeBuilder.js`](../backend/src/domain/viaje/ViajeBuilder.js)
 - [`viaje.service.js`](../backend/src/services/viaje.service.js)
 - [`viajes.routes.js`](../backend/src/routes/viajes.routes.js)
 - [`viajes.test.js`](../backend/test/viajes.test.js)
 
-### 2. Diagnóstico
+### 2. Problema
 
 Un viaje reúne datos relacionados y solo debe persistirse si cumple todas las
 reglas: fecha futura, asientos positivos que no superen la capacidad,
@@ -121,12 +122,12 @@ coordenadas dentro de rango y paradas en orden ascendente. Validar parcialmente
 en la ruta permitiría que HTTP y dominio evolucionaran juntos y dificultaría las
 pruebas.
 
-La auditoría también encontró dos casos límite: cuerpo `null` y coordenadas
-nulas o vacías. Ahora el primero responde `400 JSON_INVALIDO` y las coordenadas
-incorrectas responden `400 VIAJE_INVALIDO`, en lugar de aceptar datos incorrectos
-o responder `500`.
+Durante la implementación y revisión detectamos dos casos límite: cuerpo `null`
+y coordenadas nulas o vacías. Ahora el primero responde `400 JSON_INVALIDO` y las
+coordenadas incorrectas responden `400 VIAJE_INVALIDO`, en lugar de aceptar datos
+incorrectos o responder `500`.
 
-### 3. Alternativas
+### 3. Alternativas consideradas
 
 - Validar directamente en la ruta de Express.
 - Crear un objeto literal y validarlo después en el servicio.
@@ -156,7 +157,7 @@ inexistentes. El costo es una clase adicional y una interfaz fluida algo más
 larga que un literal; el beneficio es que las invariantes están juntas y se
 prueban sin acoplarlas a Express.
 
-## Análisis 2: distancia, costo y división
+## Decisión 2: distancia, costo y división
 
 ### Endpoints
 
@@ -167,7 +168,7 @@ prueban sin acoplarlas a Express.
 El costo actual es `distanciaKm * precioPorKm`. La división trabaja en centavos
 y distribuye el residuo para que la suma de las partes coincida con el total.
 
-### 1. Código analizado
+### 1. Código involucrado
 
 - [`MapboxAdapter.js`](../backend/src/adapters/MapboxAdapter.js)
 - [`ProveedorRutasFalso.js`](../backend/src/adapters/ProveedorRutasFalso.js)
@@ -175,14 +176,14 @@ y distribuye el residuo para que la suma de las partes coincida con el total.
 - [`division/`](../backend/src/domain/division/)
 - [`costos.test.js`](../backend/test/costos.test.js)
 
-### 2. Diagnóstico
+### 2. Problema
 
 Mapbox usa coordenadas `lng,lat`, token en la URL, metros en la respuesta y una
 estructura propia. Esos detalles no pertenecen a `ViajeService`. Por otro lado,
 la división admite algoritmos distintos y cada uno cambia por razones propias.
 Un `switch` central crecería con cada modo y mezclaría selección con cálculo.
 
-### 3. Alternativas
+### 3. Alternativas consideradas
 
 - Consumir Mapbox directamente desde `ViajeService`.
 - Definir el contrato `calcularDistancia` y encapsular Mapbox en un Adapter.
@@ -216,7 +217,7 @@ El precio único y el proveedor falso son límites conscientes. Si aparecen
 peajes, reglas por vehículo o regiones, primero se modelarán esas variaciones y
 recién entonces se reevaluará una fábrica.
 
-## Análisis 3: altas y bajas de pasajeros
+## Decisión 3: altas y bajas de pasajeros
 
 ### Endpoints
 
@@ -225,7 +226,7 @@ recién entonces se reevaluará una fábrica.
 
 Al cambiar la lista se actualizan asientos, división y aviso al conductor.
 
-### 1. Código analizado
+### 1. Código involucrado
 
 - [`pasajero.service.js`](../backend/src/services/pasajero.service.js)
 - [`PublicadorEventos.js`](../backend/src/domain/eventos/PublicadorEventos.js)
@@ -233,14 +234,14 @@ Al cambiar la lista se actualizan asientos, división y aviso al conductor.
 - [`pasajeros.routes.js`](../backend/src/routes/pasajeros.routes.js)
 - [`pasajeros.test.js`](../backend/test/pasajeros.test.js)
 
-### 2. Diagnóstico
+### 2. Problema
 
 Si `PasajeroService` actualizara directamente asientos, división y
 notificaciones, tendría demasiados motivos de cambio. Además, cada reacción
 nueva obligaría a editar el flujo principal. Las reacciones ya son tres y tienen
 dependencias distintas, por lo que Observer resuelve una variación real.
 
-### 3. Alternativas
+### 3. Alternativas consideradas
 
 - Ejecutar las tres acciones en secuencia dentro de `sumar()` y `bajar()`.
 - Emitir `pasajero:sumado` y `pasajero:bajado`, con una reacción por observador.
@@ -268,7 +269,7 @@ que otro persistió su cambio, no existe rollback automático. Con una base real
 habrá que evaluar una transacción o un patrón de eventos persistentes; agregarlo
 ahora sería desproporcionado para un repositorio en memoria.
 
-## Cambios realizados tras la auditoría
+## Refactorizaciones y mejoras realizadas
 
 1. Se normaliza defensivamente un cuerpo de viaje que no sea un objeto y el
    middleware conserva el status 400 de los errores de parsing de Express.
@@ -307,9 +308,10 @@ npm run lint
 npm run build
 ```
 
-Usar Node.js 22.13 o superior. En la máquina de auditoría, `npm run lint` pasó;
-el build quedó bloqueado por un problema de instalación de una dependencia
-opcional nativa de Rolldown en Windows, aunque el paquete figura en el lockfile.
+Usar Node.js 22.13 o superior. En el entorno local de verificación,
+`npm run lint` pasó; el build quedó bloqueado por un problema de instalación de
+una dependencia opcional nativa de Rolldown en Windows, aunque el paquete figura
+en el lockfile.
 No se agregó un binding específico de plataforma al proyecto: esa solución
 haría menos portable el repositorio. Ante ese error local, corresponde limpiar
 `frontend/node_modules`, ejecutar nuevamente `npm ci` con una versión compatible
