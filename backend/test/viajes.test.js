@@ -138,6 +138,40 @@ test('POST /api/viajes rechaza paradas fuera de orden', async () => {
   );
 });
 
+test('POST /api/viajes rechaza coordenadas nulas o vacías', async () => {
+  const app = crearApp({ ahora: () => AHORA });
+
+  const respuesta = await request(app)
+    .post('/api/viajes')
+    .send(
+      crearDatosValidos({
+        origen: { nombre: 'Origen inválido', lat: null, lng: '' },
+      }),
+    )
+    .expect(400);
+
+  assert.equal(respuesta.body.error, 'VIAJE_INVALIDO');
+  assert.ok(
+    respuesta.body.detalles.includes('origen.lat debe estar entre -90 y 90'),
+  );
+  assert.ok(
+    respuesta.body.detalles.includes('origen.lng debe estar entre -180 y 180'),
+  );
+});
+
+test('POST /api/viajes responde 400 si el cuerpo JSON es null', async () => {
+  const app = crearApp({ ahora: () => AHORA });
+
+  const respuesta = await request(app)
+    .post('/api/viajes')
+    .set('Content-Type', 'application/json')
+    .send('null')
+    .expect(400);
+
+  assert.equal(respuesta.body.error, 'JSON_INVALIDO');
+  assert.equal(respuesta.body.mensaje, 'El cuerpo debe ser un objeto JSON válido');
+});
+
 test('GET /api/viajes/:id responde 404 cuando el viaje no existe', async () => {
   const app = crearApp();
 

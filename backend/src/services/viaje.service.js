@@ -35,15 +35,17 @@ class ViajeService {
   }
 
   async publicar(datos = {}) {
+    const datosViaje =
+      datos && typeof datos === 'object' && !Array.isArray(datos) ? datos : {};
     const builder = new ViajeBuilder({ ahora: this.ahora })
-      .conVehiculo(datos.vehiculo)
-      .conFecha(datos.fecha)
+      .conVehiculo(datosViaje.vehiculo)
+      .conFecha(datosViaje.fecha)
       .conAsientosDisponibles(
-        datos.asientosDisponibles ?? datos.asientos,
+        datosViaje.asientosDisponibles ?? datosViaje.asientos,
       )
-      .conOrigen(datos.origen)
-      .conDestino(datos.destino)
-      .conParadas(datos.paradas ?? []);
+      .conOrigen(datosViaje.origen)
+      .conDestino(datosViaje.destino)
+      .conParadas(datosViaje.paradas ?? []);
 
     // Se valida antes de consultar servicios externos para no gastar una
     // llamada de rutas cuando el viaje ya es inválido.

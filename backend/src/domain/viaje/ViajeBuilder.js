@@ -132,8 +132,8 @@ function normalizarUbicacion(ubicacion, nombre, errores) {
     return null;
   }
 
-  const lat = Number(ubicacion.lat);
-  const lng = Number(ubicacion.lng);
+  const lat = convertirNumero(ubicacion.lat);
+  const lng = convertirNumero(ubicacion.lng);
 
   if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
     errores.push(`${nombre}.lat debe estar entre -90 y 90`);
@@ -144,6 +144,18 @@ function normalizarUbicacion(ubicacion, nombre, errores) {
   }
 
   return { ...ubicacion, lat, lng };
+}
+
+function convertirNumero(valor) {
+  if (
+    valor === null ||
+    typeof valor === 'boolean' ||
+    (typeof valor === 'string' && valor.trim() === '')
+  ) {
+    return Number.NaN;
+  }
+
+  return Number(valor);
 }
 
 function normalizarParadas(paradas, errores) {

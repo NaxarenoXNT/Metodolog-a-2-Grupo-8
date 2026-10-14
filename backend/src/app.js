@@ -55,11 +55,18 @@ function crearApp(dependencias = {}) {
       return next(error);
     }
 
-    const status = error.statusCode || 500;
+    const status = error.statusCode || error.status || 500;
+    const esJsonInvalido = error.type === 'entity.parse.failed';
+    const codigoPorDefecto =
+      status >= 500 ? 'ERROR_INTERNO' : 'SOLICITUD_INVALIDA';
     const respuesta = {
-      error: error.code || 'ERROR_INTERNO',
-      mensaje:
-        status >= 500 ? 'Ocurrió un error interno en el servidor' : error.message,
+      error:
+        error.code || (esJsonInvalido ? 'JSON_INVALIDO' : codigoPorDefecto),
+      mensaje: esJsonInvalido
+        ? 'El cuerpo debe ser un objeto JSON válido'
+        : status >= 500
+          ? 'Ocurrió un error interno en el servidor'
+          : error.message,
     };
 
     if (error.detalles?.length) {
