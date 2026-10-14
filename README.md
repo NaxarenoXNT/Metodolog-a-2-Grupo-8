@@ -9,22 +9,24 @@ Una aplicación web diseñada para coordinar viajes de media distancia (ej. Bah�
 
 
 ## Stack Tecnológico
-* **Frontend:** React, Vite, Tailwind CSS (Mapbox API a integrar)
+* **Frontend:** React, Vite y Tailwind CSS (interfaz todavía inicial)
 * **Backend:** Node.js/Express 
 * **Base de Datos:** PostgreSQL (a integrar)
+* **Rutas:** Adapter de Mapbox con proveedor falso para desarrollo y pruebas
 * **Herramientas:** Git, GitHub, draw.io
 
->  **Estado del proyecto:** etapa temprana. Backend y frontend levantan en modo desarrollo, pero la base de datos, Mapbox, autenticación y los patrones de diseño están **planificados y aún no implementados**. Ver [Estado actual vs. planificado](#estado-actual-vs-planificado).
+> **Estado del proyecto:** el backend implementa publicación de viajes, cálculo y división de costos, y altas/bajas de pasajeros sobre un repositorio en memoria. La base de datos, la autenticación y la interfaz de producto siguen pendientes. Ver [Estado actual vs. planificado](#estado-actual-vs-planificado).
 
-## Arquitectura y Patrones de Diseño (planificados)
-Este proyecto planea implementar los 5 patrones de diseño creacionales clásicos para resolver reglas de negocio complejas:
-1. **Singleton:** Gestión de la instancia única de conexión a la API de mapas.
-2. **Builder:** Ensamblaje paso a paso de los objetos de Viaje (rutas, paradas, políticas).
-3. **Prototype:** Clonación de viajes recurrentes semanales para agilizar la publicación.
-4. **Factory Method:** Instanciación dinámica del sistema de notificaciones (Email, Push, SMS).
-5. **Abstract Factory:** Creación de familias de calculadoras de costos (combustible + peaje) según el tipo de vehículo.
+## Arquitectura y patrones de diseño
 
-> Estos patrones son parte del diseño/roadmap. Todavía **no están implementados** en el código.
+- **Builder:** construcción y validación de viajes.
+- **Adapter:** integración del proveedor de rutas de Mapbox.
+- **Strategy:** división del costo en partes iguales o por kilómetros.
+- **Observer:** reacciones al alta y baja de pasajeros.
+
+También se evaluaron y descartaron por ahora Prototype, Singleton, Factory Method
+y Abstract Factory. La justificación, evidencia y trade-offs están reunidos en
+[`docs/decisiones-diseno.md`](docs/decisiones-diseno.md).
 
 ## Flujo de Trabajo (Git Flow)
 1. La rama `main` contiene código estable.
@@ -33,10 +35,10 @@ Este proyecto planea implementar los 5 patrones de diseño creacionales clásico
 4. Se requiere un Pull Request y revisión de al menos 1 compañero antes de hacer merge.
 
 ## Requisitos previos
-* **Node.js** v20.19+ o v22.12+ (requerido por Vite 8 — verificá con `node -v`)
+* **Node.js** v22.13+ (la versión recomendada está en `.nvmrc`; verificá con `node -v`)
 * **npm** v9 o superior (verificá con `npm -v`)
 * *(Futuro)* **PostgreSQL** v14 o superior — aún no es necesario para levantar el proyecto.
-* *(Futuro)* Cuenta y **API Key** de Mapbox — aún no es necesaria para levantar el proyecto.
+* *(Opcional)* Cuenta y **API Key** de Mapbox; sin ella se usa un proveedor falso en desarrollo.
 
 ## Cómo levantar el proyecto desde cero (Quick Start)
 
@@ -95,7 +97,8 @@ PORT=3000
 # MAPBOX_API_KEY=tu_api_key_aqui
 ```
 
-Por ahora solo `PORT` se usa realmente. Las demás están **comentadas y reservadas** para cuando se integren la base de datos, la autenticación y Mapbox.
+`PORT` y `MAPBOX_API_KEY` son utilizadas por el backend. Sin token, en desarrollo
+se usa `ProveedorRutasFalso`; `DATABASE_URL` y `JWT_SECRET` siguen reservadas.
 
 Y otro `.env` en la carpeta `frontend/` a partir de `frontend/.env.example`:
 
@@ -131,14 +134,14 @@ La base de datos PostgreSQL **todavía no está conectada** al código. Cuando s
 
 | Área | Estado hoy | Planificado |
 |---|---|---|
-| Backend Express | ✅ Levanta con endpoints de prueba (`/health`, `/api/viajes` con datos mock) | Endpoints reales conectados a BD |
+| Backend Express | ✅ Viajes, costos, división y pasajeros sobre memoria | Persistencia en BD |
 | Frontend React + Vite | ✅ Levanta (plantilla base) | UI de la plataforma |
 | Tailwind CSS | ✅ Configurado | Uso en componentes |
 | Base de datos PostgreSQL | ⬜ No conectada | Modelos, migraciones y CRUD |
 | Migraciones | ⬜ No existe script `migrate` | Definir con Knex o Prisma |
 | Autenticación (JWT + bcrypt) | ⬜ No implementada (deps instaladas) | Login/registro |
-| Mapbox | ⬜ No integrada | Rutas, paradas y cálculo de distancias |
-| Patrones de diseño | ⬜ No implementados | Singleton, Builder, Prototype, Factory Method, Abstract Factory |
+| Mapbox | ✅ Adapter disponible; proveedor falso sin token | Configurar token por ambiente |
+| Patrones de diseño | ✅ Builder, Adapter, Strategy y Observer | Reevaluar otros solo ante nuevas variantes |
 
 
 ### Convenciones
