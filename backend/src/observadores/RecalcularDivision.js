@@ -10,8 +10,8 @@ class RecalcularDivision {
     this.costoService = costoService;
   }
 
-  notificar({ viajeId }) {
-    const viaje = this.viajeRepository.buscarPorId(viajeId);
+  async notificar({ viajeId }) {
+    const viaje = await this.viajeRepository.buscarPorId(viajeId);
 
     if (!viaje) {
       return;
@@ -21,7 +21,7 @@ class RecalcularDivision {
     let montos;
 
     try {
-      montos = this.costoService.dividirGastos(viajeId, modo);
+      montos = await this.costoService.dividirGastos(viajeId, modo);
     } catch (error) {
       // Sin distancia no hay costo que repartir; el resto de las reacciones
       // (asientos, aviso al conductor) siguen funcionando igual.
@@ -33,7 +33,7 @@ class RecalcularDivision {
     }
 
     viaje.division = montos ? { modo, montos } : null;
-    this.viajeRepository.actualizar(viaje);
+    await this.viajeRepository.actualizar(viaje);
   }
 }
 

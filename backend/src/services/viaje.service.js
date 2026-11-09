@@ -20,12 +20,12 @@ class ViajeService {
     this.ahora = ahora;
   }
 
-  listar() {
+  async listar() {
     return this.viajeRepository.listar();
   }
 
-  obtenerPorId(id) {
-    const viaje = this.viajeRepository.buscarPorId(id);
+  async obtenerPorId(id) {
+    const viaje = await this.viajeRepository.buscarPorId(id);
 
     if (!viaje) {
       throw new ViajeNoEncontradoError(id);

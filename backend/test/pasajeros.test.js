@@ -41,7 +41,7 @@ function crearAppDePrueba() {
 }
 
 describe('PublicadorEventos (Observer)', () => {
-  test('avisa a cada observador suscripto, en orden', () => {
+  test('avisa a cada observador suscripto, en orden', async () => {
     const publicador = new PublicadorEventos();
     const llamadas = [];
 
@@ -49,7 +49,7 @@ describe('PublicadorEventos (Observer)', () => {
     publicador.suscribir('x', { notificar: (d) => llamadas.push(['b', d.valor]) });
     publicador.suscribir('y', { notificar: () => llamadas.push(['c']) });
 
-    publicador.emitir('x', { valor: 7 });
+    await publicador.emitir('x', { valor: 7 });
 
     assert.deepEqual(llamadas, [
       ['a', 7],
@@ -57,14 +57,49 @@ describe('PublicadorEventos (Observer)', () => {
     ]);
   });
 
-  test('se puede desuscribir un observador', () => {
+  test('espera a cada observador asíncrono antes de llamar al siguiente', async () => {
+    const publicador = new PublicadorEventos();
+    const llamadas = [];
+
+    publicador.suscribir('x', {
+      notificar: async () => {
+        llamadas.push('a:inicio');
+        await new Promise((resolver) => setTimeout(resolver, 20));
+        llamadas.push('a:fin');
+      },
+    });
+    publicador.suscribir('x', { notificar: async () => llamadas.push('b') });
+
+    await publicador.emitir('x', {});
+
+    assert.deepEqual(llamadas, ['a:inicio', 'a:fin', 'b']);
+  });
+
+  test('si un observador lanza, corta la emisión y propaga el error', async () => {
+    const publicador = new PublicadorEventos();
+    const llamadas = [];
+    const falla = new Error('falló el observador');
+
+    publicador.suscribir('x', { notificar: async () => llamadas.push('a') });
+    publicador.suscribir('x', {
+      notificar: async () => {
+        throw falla;
+      },
+    });
+    publicador.suscribir('x', { notificar: async () => llamadas.push('c') });
+
+    await assert.rejects(() => publicador.emitir('x', {}), falla);
+    assert.deepEqual(llamadas, ['a']);
+  });
+
+  test('se puede desuscribir un observador', async () => {
     const publicador = new PublicadorEventos();
     let veces = 0;
     const desuscribir = publicador.suscribir('x', { notificar: () => veces++ });
 
-    publicador.emitir('x', {});
+    await publicador.emitir('x', {});
     desuscribir();
-    publicador.emitir('x', {});
+    await publicador.emitir('x', {});
 
     assert.equal(veces, 1);
   });
@@ -75,7 +110,7 @@ describe('PublicadorEventos (Observer)', () => {
 });
 
 describe('PasajeroService', () => {
-  test('emite pasajero:sumado y pasajero:bajado sin conocer a los observadores', () => {
+  test('emite pasajero:sumado y pasajero:bajado sin conocer a los observadores', async () => {
     const publicador = new PublicadorEventos();
     const eventos = [];
     for (const evento of Object.values(EVENTOS_PASAJEROS)) {
@@ -88,8 +123,8 @@ describe('PasajeroService', () => {
       publicador,
     });
 
-    servicio.sumar(1, { usuarioId: 'u1' });
-    servicio.bajar(1, 'u1');
+    await servicio.sumar(1, { usuarioId: 'u1' });
+    await servicio.bajar(1, 'u1');
 
     assert.deepEqual(eventos, [
       ['pasajero:sumado', 1, 'u1'],

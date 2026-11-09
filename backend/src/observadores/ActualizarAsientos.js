@@ -7,8 +7,8 @@ class ActualizarAsientos {
     this.viajeRepository = viajeRepository;
   }
 
-  notificar({ evento, viajeId }) {
-    const viaje = this.viajeRepository.buscarPorId(viajeId);
+  async notificar({ evento, viajeId }) {
+    const viaje = await this.viajeRepository.buscarPorId(viajeId);
 
     if (!viaje) {
       return;
@@ -19,7 +19,7 @@ class ActualizarAsientos {
     const asientos = (viaje.asientosDisponibles ?? 0) + delta;
 
     viaje.asientosDisponibles = Math.max(0, Math.min(asientos, capacidad));
-    this.viajeRepository.actualizar(viaje);
+    await this.viajeRepository.actualizar(viaje);
   }
 }
 

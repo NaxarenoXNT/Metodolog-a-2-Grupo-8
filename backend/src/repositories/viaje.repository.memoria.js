@@ -20,16 +20,16 @@ class ViajeRepositoryMemoria {
       this.viajes.reduce((mayor, viaje) => Math.max(mayor, viaje.id || 0), 0) + 1;
   }
 
-  listar() {
+  async listar() {
     return clonar(this.viajes);
   }
 
-  buscarPorId(id) {
+  async buscarPorId(id) {
     const viaje = this.viajes.find((candidato) => candidato.id === id);
     return viaje ? clonar(viaje) : null;
   }
 
-  guardar(viaje) {
+  async guardar(viaje) {
     const viajeGuardado = clonar({
       ...viaje,
       id: viaje.id ?? this.proximoId++,
@@ -39,7 +39,7 @@ class ViajeRepositoryMemoria {
     return clonar(viajeGuardado);
   }
 
-  actualizar(viaje) {
+  async actualizar(viaje) {
     const indice = this.viajes.findIndex(
       (candidato) => candidato.id === viaje.id,
     );

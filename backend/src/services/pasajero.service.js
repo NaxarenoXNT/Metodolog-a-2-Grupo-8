@@ -24,8 +24,8 @@ class PasajeroService {
     this.publicador = publicador;
   }
 
-  sumar(viajeId, datos = {}) {
-    const viaje = this.obtenerViaje(viajeId);
+  async sumar(viajeId, datos = {}) {
+    const viaje = await this.obtenerViaje(viajeId);
     const pasajero = this.normalizarPasajero(datos, viaje);
     const pasajeros = viaje.pasajeros ?? [];
 
@@ -46,17 +46,17 @@ class PasajeroService {
     }
 
     viaje.pasajeros = [...pasajeros, pasajero];
-    this.viajeRepository.actualizar(viaje);
+    await this.viajeRepository.actualizar(viaje);
 
     // El servicio solo registra el cambio y avisa. Asientos, división y aviso
     // al conductor son observadores suscriptos por separado.
-    this.publicador.emitir(EVENTOS_PASAJEROS.SUMADO, { viajeId, pasajero });
+    await this.publicador.emitir(EVENTOS_PASAJEROS.SUMADO, { viajeId, pasajero });
 
     return this.obtenerViaje(viajeId);
   }
 
-  bajar(viajeId, usuarioId) {
-    const viaje = this.obtenerViaje(viajeId);
+  async bajar(viajeId, usuarioId) {
+    const viaje = await this.obtenerViaje(viajeId);
     const id = String(usuarioId);
     const pasajeros = viaje.pasajeros ?? [];
     const pasajero = pasajeros.find((actual) => actual.usuarioId === id);
@@ -70,15 +70,15 @@ class PasajeroService {
     }
 
     viaje.pasajeros = pasajeros.filter((actual) => actual.usuarioId !== id);
-    this.viajeRepository.actualizar(viaje);
+    await this.viajeRepository.actualizar(viaje);
 
-    this.publicador.emitir(EVENTOS_PASAJEROS.BAJADO, { viajeId, pasajero });
+    await this.publicador.emitir(EVENTOS_PASAJEROS.BAJADO, { viajeId, pasajero });
 
     return this.obtenerViaje(viajeId);
   }
 
-  obtenerViaje(id) {
-    const viaje = this.viajeRepository.buscarPorId(id);
+  async obtenerViaje(id) {
+    const viaje = await this.viajeRepository.buscarPorId(id);
 
     if (!viaje) {
       throw new ViajeNoEncontradoError(id);
