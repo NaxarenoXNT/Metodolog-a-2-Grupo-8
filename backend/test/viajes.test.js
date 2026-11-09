@@ -35,25 +35,129 @@ function crearDatosValidos(cambios = {}) {
   };
 }
 
-test('GET /api/viajes conserva los viajes que exponía el servidor original', async () => {
+test('GET /api/viajes devuelve los dos viajes de ejemplo completos', async () => {
   const app = crearApp();
 
   const respuesta = await request(app).get('/api/viajes').expect(200);
 
+  // Literales a propósito: si fueran VIAJES_INICIALES, el test no detectaría
+  // un cambio accidental en los datos de ejemplo.
   assert.deepEqual(respuesta.body, [
     {
       id: 1,
-      origen: 'Bahía Blanca',
-      destino: 'CABA',
+      conductorId: 1,
+      vehiculo: {
+        tipo: 'auto',
+        marca: 'Fiat',
+        modelo: 'Mobi',
+        capacidadAsientos: 4,
+        consumoL100km: 6,
+        tipoCombustible: 'nafta',
+      },
+      fecha: '2026-12-18T11:00:00.000Z',
       asientosDisponibles: 3,
+      origen: { lat: -38.7183, lng: -62.2663 },
+      destino: { lat: -34.6037, lng: -58.3816 },
+      paradas: [],
+      distanciaKm: 690,
+      pasajeros: [],
+      estado: 'pendiente',
     },
     {
       id: 2,
-      origen: 'CABA',
-      destino: 'Bahía Blanca',
+      conductorId: 2,
+      vehiculo: {
+        tipo: 'pickup',
+        marca: 'Volkswagen',
+        modelo: 'Saveiro',
+        capacidadAsientos: 2,
+        consumoL100km: 8.5,
+        tipoCombustible: 'nafta',
+      },
+      fecha: '2026-12-20T21:00:00.000Z',
       asientosDisponibles: 1,
+      origen: { lat: -34.6037, lng: -58.3816 },
+      destino: { lat: -38.7183, lng: -62.2663 },
+      paradas: [],
+      distanciaKm: 690,
+      pasajeros: [],
+      estado: 'pendiente',
     },
   ]);
+});
+
+function distanciaEnLineaRecta(a, b) {
+  const aRadianes = (grados) => (grados * Math.PI) / 180;
+  const dLat = aRadianes(b.lat - a.lat);
+  const dLng = aRadianes(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(aRadianes(a.lat)) * Math.cos(aRadianes(b.lat)) * Math.sin(dLng / 2) ** 2;
+
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+test('los viajes de ejemplo respetan el contrato y son coherentes entre sí', async () => {
+  const app = crearApp();
+
+  const { body: viajes } = await request(app).get('/api/viajes').expect(200);
+
+  assert.deepEqual(
+    viajes.map((viaje) => viaje.id),
+    [1, 2],
+  );
+
+  for (const viaje of viajes) {
+    const etiqueta = `viaje ${viaje.id}`;
+
+    assert.deepEqual(
+      Object.keys(viaje.vehiculo).sort(),
+      ['capacidadAsientos', 'consumoL100km', 'marca', 'modelo', 'tipo', 'tipoCombustible'],
+      etiqueta,
+    );
+    assert.equal(viaje.estado, 'pendiente', etiqueta);
+    assert.ok(Number.isInteger(viaje.conductorId), etiqueta);
+    assert.equal(new Date(viaje.fecha).toISOString(), viaje.fecha, etiqueta);
+
+    // Solo lat/lng: el esquema SQL no tiene una columna para el nombre.
+    for (const punto of [viaje.origen, viaje.destino]) {
+      assert.deepEqual(Object.keys(punto).sort(), ['lat', 'lng'], etiqueta);
+      assert.ok(punto.lat >= -90 && punto.lat <= 90, etiqueta);
+      assert.ok(punto.lng >= -180 && punto.lng <= 180, etiqueta);
+    }
+
+    // La capacidad incluye al conductor.
+    assert.equal(
+      viaje.asientosDisponibles,
+      viaje.vehiculo.capacidadAsientos - 1 - viaje.pasajeros.length,
+      etiqueta,
+    );
+
+    // La distancia por ruta no puede ser menor que la línea recta ni ser
+    // desproporcionadamente mayor.
+    const recta = distanciaEnLineaRecta(viaje.origen, viaje.destino);
+    assert.ok(
+      viaje.distanciaKm >= recta && viaje.distanciaKm <= recta * 1.5,
+      `${etiqueta}: ${viaje.distanciaKm} km fuera de [${recta.toFixed(0)}, ${(recta * 1.5).toFixed(0)}]`,
+    );
+  }
+});
+
+test('los viajes de ejemplo permiten calcular el costo, sumar un pasajero y cancelar', async () => {
+  const app = crearApp();
+
+  // 690 km * 150 = 103500
+  const costo = await request(app).get('/api/viajes/1/costo').expect(200);
+  assert.equal(costo.body.costoTotal, 103500);
+
+  const suma = await request(app)
+    .post('/api/viajes/1/pasajeros')
+    .send({ usuarioId: 'u1' })
+    .expect(201);
+  assert.equal(suma.body.asientosDisponibles, 2);
+
+  const cancelado = await request(app).patch('/api/viajes/1/cancelar').expect(200);
+  assert.equal(cancelado.body.estado, 'cancelado');
 });
 
 test('POST /api/viajes publica un viaje válido y guarda la distancia del proveedor', async () => {

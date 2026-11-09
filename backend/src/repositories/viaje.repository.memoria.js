@@ -1,15 +1,47 @@
+// Viajes de ejemplo con la forma del contrato de ViajeRepository. La capacidad
+// del vehículo incluye al conductor: asientosDisponibles = capacidadAsientos - 1
+// mientras no haya pasajeros. distanciaKm es la distancia por ruta (la línea
+// recta entre las dos ciudades es de unos 574 km).
 const VIAJES_INICIALES = [
   {
     id: 1,
-    origen: 'Bahía Blanca',
-    destino: 'CABA',
+    conductorId: 1,
+    vehiculo: {
+      tipo: 'auto',
+      marca: 'Fiat',
+      modelo: 'Mobi',
+      capacidadAsientos: 4,
+      consumoL100km: 6,
+      tipoCombustible: 'nafta',
+    },
+    fecha: '2026-12-18T11:00:00.000Z', // 08:00 hora argentina
     asientosDisponibles: 3,
+    origen: { lat: -38.7183, lng: -62.2663 }, // Bahía Blanca
+    destino: { lat: -34.6037, lng: -58.3816 }, // CABA
+    paradas: [],
+    distanciaKm: 690,
+    pasajeros: [],
+    estado: 'pendiente',
   },
   {
     id: 2,
-    origen: 'CABA',
-    destino: 'Bahía Blanca',
+    conductorId: 2,
+    vehiculo: {
+      tipo: 'pickup',
+      marca: 'Volkswagen',
+      modelo: 'Saveiro',
+      capacidadAsientos: 2,
+      consumoL100km: 8.5,
+      tipoCombustible: 'nafta',
+    },
+    fecha: '2026-12-20T21:00:00.000Z', // 18:00 hora argentina
     asientosDisponibles: 1,
+    origen: { lat: -34.6037, lng: -58.3816 }, // CABA
+    destino: { lat: -38.7183, lng: -62.2663 }, // Bahía Blanca
+    paradas: [],
+    distanciaKm: 690,
+    pasajeros: [],
+    estado: 'pendiente',
   },
 ];
 
