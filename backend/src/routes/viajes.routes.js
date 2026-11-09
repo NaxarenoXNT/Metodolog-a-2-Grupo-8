@@ -34,6 +34,16 @@ function crearViajesRouter({ viajeService }) {
     }
   });
 
+  // Sin autenticación por ahora; se agrega en la etapa B.
+  router.patch('/:id/cancelar', async (req, res, next) => {
+    try {
+      const id = convertirId(req.params.id);
+      res.json(await viajeService.cancelar(id));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }
 

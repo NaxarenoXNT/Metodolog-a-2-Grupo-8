@@ -1,4 +1,8 @@
-const { ViajeNoEncontradoError } = require('./viaje.service');
+const {
+  ViajeNoEncontradoError,
+  ViajeNoModificableError,
+} = require('./viaje.service');
+const { ESTADOS_VIAJE } = require('../domain/viaje/estados');
 const { EVENTOS_PASAJEROS } = require('../domain/eventos/PublicadorEventos');
 
 function crearError(mensaje, statusCode, code, detalles) {
@@ -25,7 +29,7 @@ class PasajeroService {
   }
 
   async sumar(viajeId, datos = {}) {
-    const viaje = await this.obtenerViaje(viajeId);
+    const viaje = await this.obtenerViajeModificable(viajeId);
     const pasajero = this.normalizarPasajero(datos, viaje);
     const pasajeros = viaje.pasajeros ?? [];
 
@@ -56,7 +60,7 @@ class PasajeroService {
   }
 
   async bajar(viajeId, usuarioId) {
-    const viaje = await this.obtenerViaje(viajeId);
+    const viaje = await this.obtenerViajeModificable(viajeId);
     const id = String(usuarioId);
     const pasajeros = viaje.pasajeros ?? [];
     const pasajero = pasajeros.find((actual) => actual.usuarioId === id);
@@ -75,6 +79,18 @@ class PasajeroService {
     await this.publicador.emitir(EVENTOS_PASAJEROS.BAJADO, { viajeId, pasajero });
 
     return this.obtenerViaje(viajeId);
+  }
+
+  // Orden de chequeos: 404 si no existe, 409 si no está pendiente y recién
+  // después las validaciones propias de cada operación.
+  async obtenerViajeModificable(id) {
+    const viaje = await this.obtenerViaje(id);
+
+    if (viaje.estado !== ESTADOS_VIAJE.PENDIENTE) {
+      throw new ViajeNoModificableError(id, viaje.estado);
+    }
+
+    return viaje;
   }
 
   async obtenerViaje(id) {

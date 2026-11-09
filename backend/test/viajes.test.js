@@ -187,3 +187,63 @@ test('GET /api/viajes/:id responde 400 cuando el id es inválido', async () => {
 
   assert.equal(respuesta.body.error, 'ID_INVALIDO');
 });
+
+function crearAppConProveedor() {
+  return crearApp({
+    ahora: () => AHORA,
+    proveedorRutas: { calcularDistancia: async () => 690 },
+  });
+}
+
+async function publicarViaje(app, cambios) {
+  const { body } = await request(app)
+    .post('/api/viajes')
+    .send(crearDatosValidos(cambios))
+    .expect(201);
+
+  return body;
+}
+
+test('POST /api/viajes publica el viaje con estado pendiente y ignora el estado enviado', async () => {
+  const app = crearAppConProveedor();
+
+  const viaje = await publicarViaje(app, { estado: 'cancelado' });
+
+  assert.equal(viaje.estado, 'pendiente');
+});
+
+test('PATCH /api/viajes/:id/cancelar cancela un viaje pendiente', async () => {
+  const app = crearAppConProveedor();
+  const viaje = await publicarViaje(app);
+
+  const respuesta = await request(app)
+    .patch(`/api/viajes/${viaje.id}/cancelar`)
+    .expect(200);
+
+  assert.deepEqual(respuesta.body, { ...viaje, estado: 'cancelado' });
+
+  const consulta = await request(app).get(`/api/viajes/${viaje.id}`).expect(200);
+  assert.equal(consulta.body.estado, 'cancelado');
+});
+
+test('PATCH /api/viajes/:id/cancelar responde 409 VIAJE_NO_MODIFICABLE si ya está cancelado', async () => {
+  const app = crearAppConProveedor();
+  const viaje = await publicarViaje(app);
+
+  await request(app).patch(`/api/viajes/${viaje.id}/cancelar`).expect(200);
+  const respuesta = await request(app)
+    .patch(`/api/viajes/${viaje.id}/cancelar`)
+    .expect(409);
+
+  assert.equal(respuesta.body.error, 'VIAJE_NO_MODIFICABLE');
+});
+
+test('PATCH /api/viajes/:id/cancelar responde 404 si no existe y 400 si el id es inválido', async () => {
+  const app = crearAppConProveedor();
+
+  const noExiste = await request(app).patch('/api/viajes/999/cancelar').expect(404);
+  const invalido = await request(app).patch('/api/viajes/abc/cancelar').expect(400);
+
+  assert.equal(noExiste.body.error, 'VIAJE_NO_ENCONTRADO');
+  assert.equal(invalido.body.error, 'ID_INVALIDO');
+});

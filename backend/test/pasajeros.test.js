@@ -16,8 +16,9 @@ function crearViajes() {
       asientosDisponibles: 2,
       distanciaKm: 10, // 10 km * 150 = 1500
       pasajeros: [],
+      estado: 'pendiente',
     },
-    { id: 2, asientosDisponibles: 1, distanciaKm: null },
+    { id: 2, asientosDisponibles: 1, distanciaKm: null, estado: 'pendiente' },
   ];
 }
 
@@ -285,5 +286,73 @@ describe('DELETE /api/viajes/:id/pasajeros/:usuarioId', () => {
       const respuesta = await request(app).delete(url).expect(404);
       assert.equal(respuesta.body.error, codigo, url);
     }
+  });
+});
+
+describe('Viajes que no están pendientes', () => {
+  // El viaje 1 queda con u1 como pasajero y cancelado.
+  async function crearAppConViajeCancelado() {
+    const contexto = crearAppDePrueba();
+
+    await request(contexto.app)
+      .post('/api/viajes/1/pasajeros')
+      .send({ usuarioId: 'u1' })
+      .expect(201);
+    await request(contexto.app).patch('/api/viajes/1/cancelar').expect(200);
+
+    return contexto;
+  }
+
+  async function verificarViajeSinCambios(app, notificador, avisosAntes) {
+    const { body: viaje } = await request(app).get('/api/viajes/1').expect(200);
+
+    assert.equal(viaje.estado, 'cancelado');
+    assert.deepEqual(
+      viaje.pasajeros.map((pasajero) => pasajero.usuarioId),
+      ['u1'],
+    );
+    assert.equal(viaje.asientosDisponibles, 1);
+    assert.equal(notificador.enviados.length, avisosAntes);
+  }
+
+  test('POST /pasajeros responde 409 VIAJE_NO_MODIFICABLE y no cambia el viaje', async () => {
+    const { app, notificador } = await crearAppConViajeCancelado();
+    const avisosAntes = notificador.enviados.length;
+
+    const respuesta = await request(app)
+      .post('/api/viajes/1/pasajeros')
+      .send({ usuarioId: 'u2' })
+      .expect(409);
+
+    assert.equal(respuesta.body.error, 'VIAJE_NO_MODIFICABLE');
+    await verificarViajeSinCambios(app, notificador, avisosAntes);
+  });
+
+  test('DELETE /pasajeros/:usuarioId responde 409 VIAJE_NO_MODIFICABLE y no cambia el viaje', async () => {
+    const { app, notificador } = await crearAppConViajeCancelado();
+    const avisosAntes = notificador.enviados.length;
+
+    const respuesta = await request(app)
+      .delete('/api/viajes/1/pasajeros/u1')
+      .expect(409);
+
+    assert.equal(respuesta.body.error, 'VIAJE_NO_MODIFICABLE');
+    await verificarViajeSinCambios(app, notificador, avisosAntes);
+  });
+
+  test('el 409 se chequea antes que las validaciones de cada operación', async () => {
+    const { app } = await crearAppConViajeCancelado();
+
+    // Sin el orden 404 -> 409 -> resto, estos darían 400 y 404.
+    const sumarInvalido = await request(app)
+      .post('/api/viajes/1/pasajeros')
+      .send({})
+      .expect(409);
+    const bajarInexistente = await request(app)
+      .delete('/api/viajes/1/pasajeros/u9')
+      .expect(409);
+
+    assert.equal(sumarInvalido.body.error, 'VIAJE_NO_MODIFICABLE');
+    assert.equal(bajarInexistente.body.error, 'VIAJE_NO_MODIFICABLE');
   });
 });
