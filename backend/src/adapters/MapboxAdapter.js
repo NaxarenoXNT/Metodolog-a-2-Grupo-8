@@ -1,4 +1,8 @@
-﻿class MapboxAdapter {
+﻿// Tiempo máximo para que Mapbox responda, cuerpo incluido. Si se agota, fetch
+// rechaza y ViajeService lo informa como 502 PROVEEDOR_RUTAS_NO_DISPONIBLE.
+const TIMEOUT_MS = 10000;
+
+class MapboxAdapter {
   constructor(token) {
     if (!token) {
       throw new Error('Se requiere un token de Mapbox para MapboxAdapter');
@@ -18,7 +22,7 @@
     const coordinates = `${origen.lng},${origen.lat};${destino.lng},${destino.lat}`;
     const url = `${this.baseUrl}/${coordinates}?geometries=geojson&overview=full&access_token=${this.token}`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
 
     if (!response.ok) {
       const errorText = await response.text();

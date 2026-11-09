@@ -4,6 +4,7 @@ const request = require('supertest');
 
 const crearApp = require('../src/app');
 const ViajeRepositoryMemoria = require('../src/repositories/viaje.repository.memoria');
+const MapboxAdapter = require('../src/adapters/MapboxAdapter');
 
 const AHORA = new Date('2026-10-11T12:00:00.000Z');
 
@@ -568,5 +569,84 @@ test.describe('ViajeRepositoryMemoria.listar(filtros)', () => {
 
     await assert.rejects(() => repositorio.listar({ desde: 'no-es-fecha' }), TypeError);
     await assert.rejects(() => repositorio.listar({ hasta: 'no-es-fecha' }), TypeError);
+  });
+});
+
+// Ninguno de estos tests llama a Mapbox: fetch está reemplazado y, cuando hace
+// falta, también el reloj del timeout (para no esperar 10 s reales).
+test.describe('MapboxAdapter: tiempo límite con fetch stubbeado', () => {
+  const origen = { lat: -38.7183, lng: -62.2663 };
+  const destino = { lat: -34.6037, lng: -58.3816 };
+
+  test('le pasa a fetch un AbortSignal.timeout de 10 s', async (t) => {
+    const timeout = t.mock.method(
+      AbortSignal,
+      'timeout',
+      () => new AbortController().signal,
+    );
+    const fetchFalso = t.mock.method(globalThis, 'fetch', async () => ({
+      ok: true,
+      json: async () => ({ routes: [{ distance: 690000 }] }),
+    }));
+
+    const distanciaKm = await new MapboxAdapter('token-de-prueba').calcularDistancia(
+      origen,
+      destino,
+    );
+
+    assert.equal(distanciaKm, 690);
+    assert.deepEqual(
+      timeout.mock.calls.map((llamada) => llamada.arguments),
+      [[10000]],
+    );
+    assert.equal(fetchFalso.mock.callCount(), 1);
+    assert.equal(
+      fetchFalso.mock.calls[0].arguments[1].signal,
+      timeout.mock.calls[0].result,
+    );
+  });
+
+  test('si Mapbox no responde a tiempo, POST /api/viajes responde 502 PROVEEDOR_RUTAS_NO_DISPONIBLE', async (t) => {
+    // El timeout "vence" a los 5 ms en lugar de a los 10 s.
+    t.mock.method(AbortSignal, 'timeout', () => {
+      const controlador = new AbortController();
+      setTimeout(() => {
+        controlador.abort(
+          new DOMException('The operation was aborted due to timeout', 'TimeoutError'),
+        );
+      }, 5);
+      return controlador.signal;
+    });
+    // Mapbox "colgado": fetch solo termina cuando se aborta su signal. Si el
+    // adapter no lo pasa, el stub responde bien y el test falla por el status.
+    const fetchFalso = t.mock.method(globalThis, 'fetch', (url, opciones) => {
+      const signal = opciones?.signal;
+
+      if (!signal) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ routes: [{ distance: 690000 }] }),
+        });
+      }
+
+      return new Promise((resolver, rechazar) => {
+        signal.addEventListener('abort', () => rechazar(signal.reason), { once: true });
+      });
+    });
+    const app = crearApp({
+      ahora: () => AHORA,
+      proveedorRutas: new MapboxAdapter('token-de-prueba'),
+    });
+
+    const respuesta = await request(app)
+      .post('/api/viajes')
+      .send(crearDatosValidos())
+      .expect(502);
+
+    assert.equal(respuesta.body.error, 'PROVEEDOR_RUTAS_NO_DISPONIBLE');
+    assert.equal(fetchFalso.mock.callCount(), 1);
+
+    // El viaje no se guardó: el próximo id libre (3) sigue sin existir.
+    await request(app).get('/api/viajes/3').expect(404);
   });
 });
