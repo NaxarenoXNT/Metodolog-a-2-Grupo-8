@@ -1,5 +1,6 @@
 const express = require('express');
 const convertirId = require('./convertirId');
+const { parsearFiltrosViajes } = require('../domain/viaje/filtros');
 
 function crearViajesRouter({ viajeService }) {
   if (!viajeService) {
@@ -10,7 +11,8 @@ function crearViajesRouter({ viajeService }) {
 
   router.get('/', async (req, res, next) => {
     try {
-      res.json(await viajeService.listar());
+      const filtros = parsearFiltrosViajes(req.query);
+      res.json(await viajeService.listar(filtros));
     } catch (error) {
       next(error);
     }

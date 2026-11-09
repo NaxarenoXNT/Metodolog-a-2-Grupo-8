@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const request = require('supertest');
 
 const crearApp = require('../src/app');
+const ViajeRepositoryMemoria = require('../src/repositories/viaje.repository.memoria');
 
 const AHORA = new Date('2026-10-11T12:00:00.000Z');
 
@@ -246,4 +247,326 @@ test('PATCH /api/viajes/:id/cancelar responde 404 si no existe y 400 si el id es
 
   assert.equal(noExiste.body.error, 'VIAJE_NO_ENCONTRADO');
   assert.equal(invalido.body.error, 'ID_INVALIDO');
+});
+
+// Viajes con fechas elegidas alrededor de los bordes del día 2026-12-15 en hora
+// argentina (UTC-03:00): ese día va de 2026-12-15T03:00:00.000Z a
+// 2026-12-16T02:59:59.999Z.
+function crearViajesParaFiltros() {
+  return [
+    { id: 1, estado: 'pendiente', fecha: '2026-12-14T20:00:00.000Z' }, // 14/12 17:00
+    { id: 2, estado: 'pendiente', fecha: '2026-12-15T02:59:59.999Z' }, // 14/12 23:59:59.999
+    { id: 3, estado: 'pendiente', fecha: '2026-12-15T03:00:00.000Z' }, // 15/12 00:00:00.000
+    { id: 4, estado: 'cancelado', fecha: '2026-12-16T02:59:00.000Z' }, // 15/12 23:59:00
+    { id: 5, estado: 'pendiente', fecha: '2026-12-16T02:59:59.999Z' }, // 15/12 23:59:59.999
+    { id: 6, estado: 'pendiente', fecha: '2026-12-16T03:00:00.000Z' }, // 16/12 00:00:00.000
+    { id: 7, estado: 'pendiente', fecha: '2026-12-20T12:00:00.000Z' },
+    { id: 8, estado: 'pendiente' }, // sin fecha
+  ];
+}
+
+function crearAppConViajesParaFiltros() {
+  return crearApp({
+    viajeRepository: new ViajeRepositoryMemoria(crearViajesParaFiltros()),
+  });
+}
+
+async function listarIds(app, filtros) {
+  const respuesta = await request(app)
+    .get('/api/viajes')
+    .query(filtros)
+    .expect(200);
+
+  return respuesta.body.map((viaje) => viaje.id);
+}
+
+async function pedirFiltroInvalido(app, filtros) {
+  const respuesta = await request(app)
+    .get('/api/viajes')
+    .query(filtros)
+    .expect(400);
+
+  assert.equal(respuesta.body.error, 'FILTRO_INVALIDO');
+  assert.ok(Array.isArray(respuesta.body.detalles));
+
+  return respuesta.body.detalles;
+}
+
+const MENSAJE_FECHA_INVALIDA =
+  'debe ser una fecha YYYY-MM-DD o ISO 8601 con zona horaria';
+
+test('GET /api/viajes sin filtros devuelve todos los viajes, también con parámetros desconocidos', async () => {
+  const app = crearAppConViajesParaFiltros();
+  const todos = [1, 2, 3, 4, 5, 6, 7, 8];
+
+  assert.deepEqual(await listarIds(app, {}), todos);
+  assert.deepEqual(await listarIds(app, { otro: 'valor' }), todos);
+});
+
+test('GET /api/viajes?estado filtra por estado', async () => {
+  const app = crearAppConViajesParaFiltros();
+
+  assert.deepEqual(await listarIds(app, { estado: 'cancelado' }), [4]);
+  assert.deepEqual(
+    await listarIds(app, { estado: 'pendiente' }),
+    [1, 2, 3, 5, 6, 7, 8],
+  );
+});
+
+test('GET /api/viajes?desde incluye el inicio del día argentino y excluye viajes sin fecha', async () => {
+  const app = crearAppConViajesParaFiltros();
+
+  // El 2 (14/12 23:59:59.999) queda afuera; el 3 (15/12 00:00:00.000) entra.
+  assert.deepEqual(await listarIds(app, { desde: '2026-12-15' }), [3, 4, 5, 6, 7]);
+});
+
+test('GET /api/viajes?hasta cubre el día argentino entero y excluye viajes sin fecha', async () => {
+  const app = crearAppConViajesParaFiltros();
+
+  // El 4 (15/12 23:59:00) y el 5 (15/12 23:59:59.999) entran; el 6 (16/12 00:00) no.
+  assert.deepEqual(await listarIds(app, { hasta: '2026-12-15' }), [1, 2, 3, 4, 5]);
+});
+
+test('GET /api/viajes con desde y hasta del mismo día devuelve solo ese día argentino', async () => {
+  const app = crearAppConViajesParaFiltros();
+
+  assert.deepEqual(
+    await listarIds(app, { desde: '2026-12-15', hasta: '2026-12-15' }),
+    [3, 4, 5],
+  );
+});
+
+test('GET /api/viajes combina estado, desde y hasta', async () => {
+  const app = crearAppConViajesParaFiltros();
+
+  assert.deepEqual(
+    await listarIds(app, {
+      estado: 'pendiente',
+      desde: '2026-12-15',
+      hasta: '2026-12-15',
+    }),
+    [3, 5],
+  );
+  assert.deepEqual(
+    await listarIds(app, { estado: 'cancelado', desde: '2026-12-16' }),
+    [],
+  );
+});
+
+test('GET /api/viajes: desde y hasta son inclusivos al milisegundo', async () => {
+  const app = crearAppConViajesParaFiltros();
+
+  // El viaje 3 sale exactamente a 2026-12-15T03:00:00.000Z.
+  assert.deepEqual(
+    await listarIds(app, {
+      desde: '2026-12-15T03:00:00.000Z',
+      hasta: '2026-12-15T03:00:00.000Z',
+    }),
+    [3],
+  );
+  assert.deepEqual(
+    await listarIds(app, { desde: '2026-12-15T03:00:00.001Z', hasta: '2026-12-15' }),
+    [4, 5],
+  );
+  // El viaje 5 sale exactamente a 2026-12-16T02:59:59.999Z.
+  assert.deepEqual(
+    await listarIds(app, { desde: '2026-12-16T02:59:59.999Z', hasta: '2026-12-16T02:59:59.999Z' }),
+    [5],
+  );
+  assert.deepEqual(
+    await listarIds(app, { desde: '2026-12-16T02:59:59.000Z', hasta: '2026-12-16T02:59:59.998Z' }),
+    [],
+  );
+});
+
+test('GET /api/viajes: el solo-día es hora argentina y el ISO con zona se usa tal cual', async () => {
+  const app = crearAppConViajesParaFiltros();
+  const desdeDia = [3, 4, 5, 6, 7];
+
+  // Mismo instante que '2026-12-15' en hora argentina, escrito de tres formas.
+  assert.deepEqual(await listarIds(app, { desde: '2026-12-15' }), desdeDia);
+  assert.deepEqual(await listarIds(app, { desde: '2026-12-15T03:00:00.000Z' }), desdeDia);
+  assert.deepEqual(await listarIds(app, { desde: '2026-12-15T00:00:00-03:00' }), desdeDia);
+
+  // 00:00 UTC es 21:00 del día anterior en Argentina: entra también el viaje 2.
+  assert.deepEqual(
+    await listarIds(app, { desde: '2026-12-15T00:00:00Z' }),
+    [2, 3, 4, 5, 6, 7],
+  );
+
+  // Lo mismo para hasta: el fin del día argentino no es el fin del día UTC.
+  assert.deepEqual(await listarIds(app, { hasta: '2026-12-15' }), [1, 2, 3, 4, 5]);
+  assert.deepEqual(
+    await listarIds(app, { hasta: '2026-12-15T23:59:59.999Z' }),
+    [1, 2, 3],
+  );
+  assert.deepEqual(
+    await listarIds(app, { hasta: '2026-12-15T23:59:59.999-03:00' }),
+    [1, 2, 3, 4, 5],
+  );
+});
+
+test('GET /api/viajes responde 400 FILTRO_INVALIDO si desde es posterior a hasta', async () => {
+  const app = crearAppConViajesParaFiltros();
+
+  const detalles = await pedirFiltroInvalido(app, {
+    desde: '2026-12-16',
+    hasta: '2026-12-15',
+  });
+
+  assert.deepEqual(detalles, ['desde no puede ser posterior a hasta']);
+});
+
+test('GET /api/viajes responde 400 FILTRO_INVALIDO con un estado desconocido o vacío', async () => {
+  const app = crearAppConViajesParaFiltros();
+
+  for (const estado of ['en_curso', 'Pendiente', '']) {
+    const detalles = await pedirFiltroInvalido(app, { estado });
+
+    assert.deepEqual(detalles, ['estado debe ser uno de: pendiente, cancelado']);
+  }
+});
+
+test('GET /api/viajes responde 400 FILTRO_INVALIDO con fechas inválidas', async () => {
+  const app = crearAppConViajesParaFiltros();
+  const invalidas = [
+    'no-es-fecha',
+    '2026-02-30', // el día no existe
+    '2026-13-01', // el mes no existe
+    '2026-12-15T10:00:00', // ISO sin zona: dependería del servidor
+    '2026-12-15T25:00:00Z',
+    '2026-12-15T10:00:00+24:00',
+    '',
+  ];
+
+  for (const valor of invalidas) {
+    assert.deepEqual(
+      await pedirFiltroInvalido(app, { desde: valor }),
+      [`desde ${MENSAJE_FECHA_INVALIDA}`],
+      `desde=${valor}`,
+    );
+    assert.deepEqual(
+      await pedirFiltroInvalido(app, { hasta: valor }),
+      [`hasta ${MENSAJE_FECHA_INVALIDA}`],
+      `hasta=${valor}`,
+    );
+  }
+});
+
+test('GET /api/viajes junta todos los errores de filtros en detalles', async () => {
+  const app = crearAppConViajesParaFiltros();
+
+  const detalles = await pedirFiltroInvalido(app, {
+    estado: 'en_curso',
+    desde: 'ayer',
+    hasta: 'mañana',
+  });
+
+  assert.deepEqual(detalles, [
+    'estado debe ser uno de: pendiente, cancelado',
+    `desde ${MENSAJE_FECHA_INVALIDA}`,
+    `hasta ${MENSAJE_FECHA_INVALIDA}`,
+  ]);
+});
+
+test('GET /api/viajes rechaza parámetros repetidos', async () => {
+  const app = crearAppConViajesParaFiltros();
+
+  const respuesta = await request(app)
+    .get('/api/viajes?estado=pendiente&estado=cancelado')
+    .expect(400);
+
+  assert.equal(respuesta.body.error, 'FILTRO_INVALIDO');
+  assert.deepEqual(respuesta.body.detalles, ['estado debe tener un único valor']);
+});
+
+test.describe('ViajeRepositoryMemoria.listar(filtros)', () => {
+  function crearRepositorio(viajes = crearViajesParaFiltros()) {
+    return new ViajeRepositoryMemoria(viajes);
+  }
+
+  async function ids(repositorio, filtros) {
+    const viajes = await repositorio.listar(filtros);
+    return viajes.map((viaje) => viaje.id);
+  }
+
+  test('sin filtros devuelve todos los viajes, en orden y como copias', async () => {
+    const repositorio = crearRepositorio();
+
+    for (const filtros of [undefined, null, {}]) {
+      assert.deepEqual(await ids(repositorio, filtros), [1, 2, 3, 4, 5, 6, 7, 8]);
+    }
+
+    const viajes = await repositorio.listar();
+    viajes[0].estado = 'modificado desde afuera';
+
+    assert.equal((await repositorio.buscarPorId(1)).estado, 'pendiente');
+  });
+
+  test('filtra por estado exacto', async () => {
+    const repositorio = crearRepositorio();
+
+    assert.deepEqual(await ids(repositorio, { estado: 'cancelado' }), [4]);
+    assert.deepEqual(await ids(repositorio, { estado: 'pendiente' }), [1, 2, 3, 5, 6, 7, 8]);
+  });
+
+  test('desde y hasta son inclusivos al milisegundo', async () => {
+    const repositorio = crearRepositorio();
+    const desde = '2026-12-15T03:00:00.000Z';
+    const hasta = '2026-12-16T02:59:59.999Z';
+
+    assert.deepEqual(await ids(repositorio, { desde, hasta }), [3, 4, 5]);
+    assert.deepEqual(
+      await ids(repositorio, { desde: '2026-12-15T03:00:00.001Z', hasta }),
+      [4, 5],
+    );
+    assert.deepEqual(
+      await ids(repositorio, { desde, hasta: '2026-12-16T02:59:59.998Z' }),
+      [3, 4],
+    );
+  });
+
+  test('compara instantes y no texto: la fecha del viaje puede tener otra zona', async () => {
+    const repositorio = crearRepositorio([
+      { id: 1, fecha: '2026-12-15T00:00:00.000-03:00' }, // = 03:00:00.000Z
+      { id: 2, fecha: '2026-12-14T23:59:59.999-03:00' }, // = 02:59:59.999Z
+    ]);
+
+    // Como texto, '2026-12-15T00:...' sería menor que '2026-12-15T03:...'.
+    assert.deepEqual(await ids(repositorio, { desde: '2026-12-15T03:00:00.000Z' }), [1]);
+    assert.deepEqual(await ids(repositorio, { hasta: '2026-12-15T02:59:59.999Z' }), [2]);
+  });
+
+  test('con filtro de fecha excluye viajes sin fecha o con fecha inválida; con solo estado los conserva', async () => {
+    const repositorio = crearRepositorio([
+      { id: 1, estado: 'pendiente' },
+      { id: 2, estado: 'pendiente', fecha: null },
+      { id: 3, estado: 'pendiente', fecha: 'no-es-fecha' },
+      { id: 4, estado: 'pendiente', fecha: '2026-12-15T12:00:00.000Z' },
+    ]);
+
+    assert.deepEqual(await ids(repositorio, { desde: '2026-01-01T00:00:00.000Z' }), [4]);
+    assert.deepEqual(await ids(repositorio, { hasta: '2027-01-01T00:00:00.000Z' }), [4]);
+    assert.deepEqual(await ids(repositorio, { estado: 'pendiente' }), [1, 2, 3, 4]);
+  });
+
+  test('combina estado, desde y hasta', async () => {
+    const repositorio = crearRepositorio();
+
+    assert.deepEqual(
+      await ids(repositorio, {
+        estado: 'pendiente',
+        desde: '2026-12-15T03:00:00.000Z',
+        hasta: '2026-12-16T02:59:59.999Z',
+      }),
+      [3, 5],
+    );
+  });
+
+  test('rechaza filtros de fecha que no se pueden interpretar', async () => {
+    const repositorio = crearRepositorio();
+
+    await assert.rejects(() => repositorio.listar({ desde: 'no-es-fecha' }), TypeError);
+    await assert.rejects(() => repositorio.listar({ hasta: 'no-es-fecha' }), TypeError);
+  });
 });

@@ -32,8 +32,10 @@ class ViajeService {
     this.ahora = ahora;
   }
 
-  async listar() {
-    return this.viajeRepository.listar();
+  // Los filtros ({ estado, desde, hasta }) llegan normalizados desde la ruta
+  // y los aplica el repositorio.
+  async listar(filtros) {
+    return this.viajeRepository.listar(filtros);
   }
 
   async obtenerPorId(id) {
