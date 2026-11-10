@@ -37,12 +37,12 @@ class CostoService {
     this.precios = precios;
   }
 
-  calcularCostoTotal(viajeId) {
-    return this.costoDe(this.obtenerViaje(viajeId));
+  async calcularCostoTotal(viajeId) {
+    return this.costoDe(await this.obtenerViaje(viajeId));
   }
 
-  dividirGastos(viajeId, modo = 'iguales') {
-    const viaje = this.obtenerViaje(viajeId);
+  async dividirGastos(viajeId, modo = 'iguales') {
+    const viaje = await this.obtenerViaje(viajeId);
 
     // Object.hasOwn evita que ?modo=toString o ?modo=constructor encuentren
     // métodos heredados de Object en lugar de una estrategia.
@@ -56,8 +56,8 @@ class CostoService {
     );
   }
 
-  obtenerViaje(id) {
-    const viaje = this.viajeRepository.buscarPorId(id);
+  async obtenerViaje(id) {
+    const viaje = await this.viajeRepository.buscarPorId(id);
 
     if (!viaje) {
       throw new ViajeNoEncontradoError(id);

@@ -8,8 +8,8 @@ class AvisarConductor {
     this.notificador = notificador;
   }
 
-  notificar({ evento, viajeId, pasajero }) {
-    const viaje = this.viajeRepository.buscarPorId(viajeId);
+  async notificar({ evento, viajeId, pasajero }) {
+    const viaje = await this.viajeRepository.buscarPorId(viajeId);
 
     if (!viaje) {
       return;
@@ -22,7 +22,7 @@ class AvisarConductor {
       `Asientos disponibles: ${viaje.asientosDisponibles}.`;
 
     try {
-      this.notificador.enviar({
+      await this.notificador.enviar({
         destinatario: viaje.conductorId ?? `conductor del viaje ${viaje.id}`,
         mensaje,
       });

@@ -16,8 +16,9 @@ function crearViajes() {
       asientosDisponibles: 2,
       distanciaKm: 10, // 10 km * 150 = 1500
       pasajeros: [],
+      estado: 'pendiente',
     },
-    { id: 2, asientosDisponibles: 1, distanciaKm: null },
+    { id: 2, asientosDisponibles: 1, distanciaKm: null, estado: 'pendiente' },
   ];
 }
 
@@ -41,7 +42,7 @@ function crearAppDePrueba() {
 }
 
 describe('PublicadorEventos (Observer)', () => {
-  test('avisa a cada observador suscripto, en orden', () => {
+  test('avisa a cada observador suscripto, en orden', async () => {
     const publicador = new PublicadorEventos();
     const llamadas = [];
 
@@ -49,7 +50,7 @@ describe('PublicadorEventos (Observer)', () => {
     publicador.suscribir('x', { notificar: (d) => llamadas.push(['b', d.valor]) });
     publicador.suscribir('y', { notificar: () => llamadas.push(['c']) });
 
-    publicador.emitir('x', { valor: 7 });
+    await publicador.emitir('x', { valor: 7 });
 
     assert.deepEqual(llamadas, [
       ['a', 7],
@@ -57,14 +58,49 @@ describe('PublicadorEventos (Observer)', () => {
     ]);
   });
 
-  test('se puede desuscribir un observador', () => {
+  test('espera a cada observador asíncrono antes de llamar al siguiente', async () => {
+    const publicador = new PublicadorEventos();
+    const llamadas = [];
+
+    publicador.suscribir('x', {
+      notificar: async () => {
+        llamadas.push('a:inicio');
+        await new Promise((resolver) => setTimeout(resolver, 20));
+        llamadas.push('a:fin');
+      },
+    });
+    publicador.suscribir('x', { notificar: async () => llamadas.push('b') });
+
+    await publicador.emitir('x', {});
+
+    assert.deepEqual(llamadas, ['a:inicio', 'a:fin', 'b']);
+  });
+
+  test('si un observador lanza, corta la emisión y propaga el error', async () => {
+    const publicador = new PublicadorEventos();
+    const llamadas = [];
+    const falla = new Error('falló el observador');
+
+    publicador.suscribir('x', { notificar: async () => llamadas.push('a') });
+    publicador.suscribir('x', {
+      notificar: async () => {
+        throw falla;
+      },
+    });
+    publicador.suscribir('x', { notificar: async () => llamadas.push('c') });
+
+    await assert.rejects(() => publicador.emitir('x', {}), falla);
+    assert.deepEqual(llamadas, ['a']);
+  });
+
+  test('se puede desuscribir un observador', async () => {
     const publicador = new PublicadorEventos();
     let veces = 0;
     const desuscribir = publicador.suscribir('x', { notificar: () => veces++ });
 
-    publicador.emitir('x', {});
+    await publicador.emitir('x', {});
     desuscribir();
-    publicador.emitir('x', {});
+    await publicador.emitir('x', {});
 
     assert.equal(veces, 1);
   });
@@ -75,7 +111,7 @@ describe('PublicadorEventos (Observer)', () => {
 });
 
 describe('PasajeroService', () => {
-  test('emite pasajero:sumado y pasajero:bajado sin conocer a los observadores', () => {
+  test('emite pasajero:sumado y pasajero:bajado sin conocer a los observadores', async () => {
     const publicador = new PublicadorEventos();
     const eventos = [];
     for (const evento of Object.values(EVENTOS_PASAJEROS)) {
@@ -88,8 +124,8 @@ describe('PasajeroService', () => {
       publicador,
     });
 
-    servicio.sumar(1, { usuarioId: 'u1' });
-    servicio.bajar(1, 'u1');
+    await servicio.sumar(1, { usuarioId: 'u1' });
+    await servicio.bajar(1, 'u1');
 
     assert.deepEqual(eventos, [
       ['pasajero:sumado', 1, 'u1'],
@@ -250,5 +286,73 @@ describe('DELETE /api/viajes/:id/pasajeros/:usuarioId', () => {
       const respuesta = await request(app).delete(url).expect(404);
       assert.equal(respuesta.body.error, codigo, url);
     }
+  });
+});
+
+describe('Viajes que no están pendientes', () => {
+  // El viaje 1 queda con u1 como pasajero y cancelado.
+  async function crearAppConViajeCancelado() {
+    const contexto = crearAppDePrueba();
+
+    await request(contexto.app)
+      .post('/api/viajes/1/pasajeros')
+      .send({ usuarioId: 'u1' })
+      .expect(201);
+    await request(contexto.app).patch('/api/viajes/1/cancelar').expect(200);
+
+    return contexto;
+  }
+
+  async function verificarViajeSinCambios(app, notificador, avisosAntes) {
+    const { body: viaje } = await request(app).get('/api/viajes/1').expect(200);
+
+    assert.equal(viaje.estado, 'cancelado');
+    assert.deepEqual(
+      viaje.pasajeros.map((pasajero) => pasajero.usuarioId),
+      ['u1'],
+    );
+    assert.equal(viaje.asientosDisponibles, 1);
+    assert.equal(notificador.enviados.length, avisosAntes);
+  }
+
+  test('POST /pasajeros responde 409 VIAJE_NO_MODIFICABLE y no cambia el viaje', async () => {
+    const { app, notificador } = await crearAppConViajeCancelado();
+    const avisosAntes = notificador.enviados.length;
+
+    const respuesta = await request(app)
+      .post('/api/viajes/1/pasajeros')
+      .send({ usuarioId: 'u2' })
+      .expect(409);
+
+    assert.equal(respuesta.body.error, 'VIAJE_NO_MODIFICABLE');
+    await verificarViajeSinCambios(app, notificador, avisosAntes);
+  });
+
+  test('DELETE /pasajeros/:usuarioId responde 409 VIAJE_NO_MODIFICABLE y no cambia el viaje', async () => {
+    const { app, notificador } = await crearAppConViajeCancelado();
+    const avisosAntes = notificador.enviados.length;
+
+    const respuesta = await request(app)
+      .delete('/api/viajes/1/pasajeros/u1')
+      .expect(409);
+
+    assert.equal(respuesta.body.error, 'VIAJE_NO_MODIFICABLE');
+    await verificarViajeSinCambios(app, notificador, avisosAntes);
+  });
+
+  test('el 409 se chequea antes que las validaciones de cada operación', async () => {
+    const { app } = await crearAppConViajeCancelado();
+
+    // Sin el orden 404 -> 409 -> resto, estos darían 400 y 404.
+    const sumarInvalido = await request(app)
+      .post('/api/viajes/1/pasajeros')
+      .send({})
+      .expect(409);
+    const bajarInexistente = await request(app)
+      .delete('/api/viajes/1/pasajeros/u9')
+      .expect(409);
+
+    assert.equal(sumarInvalido.body.error, 'VIAJE_NO_MODIFICABLE');
+    assert.equal(bajarInexistente.body.error, 'VIAJE_NO_MODIFICABLE');
   });
 });

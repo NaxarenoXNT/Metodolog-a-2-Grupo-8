@@ -28,9 +28,11 @@ class PublicadorEventos {
     );
   }
 
-  emitir(evento, datos) {
+  // Secuencial a propósito: cada observador espera al anterior. Si uno lanza,
+  // la emisión se corta y el error se propaga a quien emitió.
+  async emitir(evento, datos) {
     for (const observador of this.observadores.get(evento) ?? []) {
-      observador.notificar({ evento, ...datos });
+      await observador.notificar({ evento, ...datos });
     }
   }
 }

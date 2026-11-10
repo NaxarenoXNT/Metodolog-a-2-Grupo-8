@@ -1,5 +1,6 @@
 const express = require('express');
 const convertirId = require('./convertirId');
+const { parsearFiltrosViajes } = require('../domain/viaje/filtros');
 
 function crearViajesRouter({ viajeService }) {
   if (!viajeService) {
@@ -8,14 +9,19 @@ function crearViajesRouter({ viajeService }) {
 
   const router = express.Router();
 
-  router.get('/', (req, res) => {
-    res.json(viajeService.listar());
+  router.get('/', async (req, res, next) => {
+    try {
+      const filtros = parsearFiltrosViajes(req.query);
+      res.json(await viajeService.listar(filtros));
+    } catch (error) {
+      next(error);
+    }
   });
 
-  router.get('/:id', (req, res, next) => {
+  router.get('/:id', async (req, res, next) => {
     try {
       const id = convertirId(req.params.id);
-      res.json(viajeService.obtenerPorId(id));
+      res.json(await viajeService.obtenerPorId(id));
     } catch (error) {
       next(error);
     }
@@ -25,6 +31,16 @@ function crearViajesRouter({ viajeService }) {
     try {
       const viaje = await viajeService.publicar(req.body);
       res.status(201).json(viaje);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Sin autenticación por ahora; se agrega en la etapa B.
+  router.patch('/:id/cancelar', async (req, res, next) => {
+    try {
+      const id = convertirId(req.params.id);
+      res.json(await viajeService.cancelar(id));
     } catch (error) {
       next(error);
     }

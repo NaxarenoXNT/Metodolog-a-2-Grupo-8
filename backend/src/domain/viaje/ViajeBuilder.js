@@ -1,3 +1,5 @@
+const { ESTADOS_VIAJE } = require('./estados');
+
 class ErrorValidacionViaje extends Error {
   constructor(detalles) {
     super('Los datos del viaje no son válidos');
@@ -68,6 +70,7 @@ class ViajeBuilder {
       origen,
       destino,
       paradas,
+      estado: ESTADOS_VIAJE.PENDIENTE,
     };
   }
 }

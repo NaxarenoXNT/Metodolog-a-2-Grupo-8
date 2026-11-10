@@ -1,4 +1,5 @@
 const { ViajeBuilder } = require('../domain/viaje/ViajeBuilder');
+const { ESTADOS_VIAJE } = require('../domain/viaje/estados');
 
 class ViajeNoEncontradoError extends Error {
   constructor(id) {
@@ -6,6 +7,17 @@ class ViajeNoEncontradoError extends Error {
     this.name = 'ViajeNoEncontradoError';
     this.statusCode = 404;
     this.code = 'VIAJE_NO_ENCONTRADO';
+  }
+}
+
+class ViajeNoModificableError extends Error {
+  constructor(id, estado) {
+    super(
+      `El viaje ${id} no se puede modificar porque su estado es ${estado ?? 'desconocido'}`,
+    );
+    this.name = 'ViajeNoModificableError';
+    this.statusCode = 409;
+    this.code = 'VIAJE_NO_MODIFICABLE';
   }
 }
 
@@ -20,18 +32,34 @@ class ViajeService {
     this.ahora = ahora;
   }
 
-  listar() {
-    return this.viajeRepository.listar();
+  // Los filtros ({ estado, desde, hasta }) llegan normalizados desde la ruta
+  // y los aplica el repositorio.
+  async listar(filtros) {
+    return this.viajeRepository.listar(filtros);
   }
 
-  obtenerPorId(id) {
-    const viaje = this.viajeRepository.buscarPorId(id);
+  async obtenerPorId(id) {
+    const viaje = await this.viajeRepository.buscarPorId(id);
 
     if (!viaje) {
       throw new ViajeNoEncontradoError(id);
     }
 
     return viaje;
+  }
+
+  // 404 si no existe, 409 si ya no está pendiente.
+  async cancelar(id) {
+    const viaje = await this.obtenerPorId(id);
+
+    if (viaje.estado !== ESTADOS_VIAJE.PENDIENTE) {
+      throw new ViajeNoModificableError(id, viaje.estado);
+    }
+
+    return this.viajeRepository.actualizar({
+      ...viaje,
+      estado: ESTADOS_VIAJE.CANCELADO,
+    });
   }
 
   async publicar(datos = {}) {
@@ -91,3 +119,4 @@ class ViajeService {
 
 module.exports = ViajeService;
 module.exports.ViajeNoEncontradoError = ViajeNoEncontradoError;
+module.exports.ViajeNoModificableError = ViajeNoModificableError;

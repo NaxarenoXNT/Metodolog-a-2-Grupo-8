@@ -8,20 +8,20 @@ function crearPasajerosRouter({ pasajeroService }) {
 
   const router = express.Router();
 
-  router.post('/:id/pasajeros', (req, res, next) => {
+  router.post('/:id/pasajeros', async (req, res, next) => {
     try {
       const id = convertirId(req.params.id);
-      const viaje = pasajeroService.sumar(id, req.body ?? {});
+      const viaje = await pasajeroService.sumar(id, req.body ?? {});
       res.status(201).json(viaje);
     } catch (error) {
       next(error);
     }
   });
 
-  router.delete('/:id/pasajeros/:usuarioId', (req, res, next) => {
+  router.delete('/:id/pasajeros/:usuarioId', async (req, res, next) => {
     try {
       const id = convertirId(req.params.id);
-      const viaje = pasajeroService.bajar(id, req.params.usuarioId);
+      const viaje = await pasajeroService.bajar(id, req.params.usuarioId);
       res.json(viaje);
     } catch (error) {
       next(error);
