@@ -9,7 +9,8 @@
   "scripts": {
     "test": "node --test",
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "migrate": "node scripts/migrar.js"
   },
   "keywords": [],
   "type": "commonjs",
