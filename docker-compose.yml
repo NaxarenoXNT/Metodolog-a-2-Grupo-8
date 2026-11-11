@@ -1,0 +1,30 @@
+# PostgreSQL local para desarrollo y tests del backend.
+#   cp .env.example .env          # y completar POSTGRES_PASSWORD (el .env no se sube)
+#   docker compose up -d          # crea las bases viajes y viajes_test
+#   cd backend && npm run migrate # crea las tablas (y con DATABASE_URL=…/viajes_test para los tests)
+# Si el 5432 está ocupado: POSTGRES_PORT=5433 docker compose up -d (y ajustar DATABASE_URL).
+name: grupo8
+
+services:
+  db:
+    image: postgres:17
+    container_name: grupo8-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: grupo8
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en el .env de la raíz}
+      POSTGRES_DB: viajes
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - datos-postgres:/var/lib/postgresql/data
+      # Scripts que corren solo la primera vez, con el volumen vacío.
+      - ./backend/db/docker:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grupo8 -d viajes"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  datos-postgres:
