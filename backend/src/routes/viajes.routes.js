@@ -2,9 +2,15 @@ const express = require('express');
 const convertirId = require('./convertirId');
 const { parsearFiltrosViajes } = require('../domain/viaje/filtros');
 
-function crearViajesRouter({ viajeService }) {
+function crearViajesRouter({ viajeService, vehiculoService, requiereAuth }) {
   if (!viajeService) {
     throw new Error('Se necesita viajeService para crear las rutas de viajes');
+  }
+  if (!vehiculoService) {
+    throw new Error('Se necesita vehiculoService para crear las rutas de viajes');
+  }
+  if (!requiereAuth) {
+    throw new Error('Se necesita requiereAuth para crear las rutas de viajes');
   }
 
   const router = express.Router();
@@ -27,19 +33,33 @@ function crearViajesRouter({ viajeService }) {
     }
   });
 
-  router.post('/', async (req, res, next) => {
+  router.post('/', requiereAuth, async (req, res, next) => {
     try {
-      const viaje = await viajeService.publicar(req.body);
+      const cuerpo =
+        req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+          ? req.body
+          : {};
+      const vehiculo = await vehiculoService.obtenerPropio(
+        cuerpo.vehiculoId,
+        req.usuario.id,
+      );
+      const viaje = await viajeService.publicar({
+        ...cuerpo,
+        conductorId: req.usuario.id,
+        vehiculoId: vehiculo.id,
+        vehiculo,
+      });
       res.status(201).json(viaje);
     } catch (error) {
       next(error);
     }
   });
 
-  // Sin autenticación por ahora; se agrega en la etapa B.
-  router.patch('/:id/cancelar', async (req, res, next) => {
+  router.patch('/:id/cancelar', requiereAuth, async (req, res, next) => {
     try {
       const id = convertirId(req.params.id);
+      const viaje = await viajeService.obtenerPorId(id);
+      verificarConductor(viaje, req.usuario.id);
       res.json(await viajeService.cancelar(id));
     } catch (error) {
       next(error);
@@ -47,6 +67,15 @@ function crearViajesRouter({ viajeService }) {
   });
 
   return router;
+}
+
+function verificarConductor(viaje, usuarioId) {
+  if (String(viaje.conductorId) !== String(usuarioId)) {
+    const error = new Error('Solo el conductor puede cancelar el viaje');
+    error.statusCode = 403;
+    error.code = 'PROHIBIDO';
+    throw error;
+  }
 }
 
 module.exports = crearViajesRouter;

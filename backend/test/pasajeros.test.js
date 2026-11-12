@@ -7,18 +7,44 @@ const ViajeRepositoryMemoria = require('../src/repositories/viaje.repository.mem
 const PublicadorEventos = require('../src/domain/eventos/PublicadorEventos');
 const { EVENTOS_PASAJEROS } = require('../src/domain/eventos/PublicadorEventos');
 const PasajeroService = require('../src/services/pasajero.service');
+const {
+  JWT_SECRET_PRUEBAS,
+  crearUsuario,
+  bearer,
+} = require('../test-helpers/auth');
+
+const CONDUCTOR = crearUsuario('conductor', {
+  nombre: 'Conductor',
+  email: 'conductor@example.com',
+});
+const USUARIO_1 = crearUsuario('u1', {
+  nombre: 'Ana',
+  email: 'ana@example.com',
+});
+const USUARIO_2 = crearUsuario('u2', {
+  nombre: 'Beto',
+  email: 'beto@example.com',
+});
+const USUARIO_9 = crearUsuario('u9');
 
 function crearViajes() {
   return [
     {
       id: 1,
+      conductorId: CONDUCTOR.id,
       vehiculo: { capacidadAsientos: 4 },
       asientosDisponibles: 2,
       distanciaKm: 10, // 10 km * 150 = 1500
       pasajeros: [],
       estado: 'pendiente',
     },
-    { id: 2, asientosDisponibles: 1, distanciaKm: null, estado: 'pendiente' },
+    {
+      id: 2,
+      conductorId: CONDUCTOR.id,
+      asientosDisponibles: 1,
+      distanciaKm: null,
+      estado: 'pendiente',
+    },
   ];
 }
 
@@ -35,6 +61,7 @@ function crearNotificadorFalso() {
 function crearAppDePrueba() {
   const notificador = crearNotificadorFalso();
   const app = crearApp({
+    jwtSecret: JWT_SECRET_PRUEBAS,
     viajeRepository: new ViajeRepositoryMemoria(crearViajes()),
     notificador,
   });
@@ -140,12 +167,14 @@ describe('POST /api/viajes/:id/pasajeros', () => {
 
     await request(app)
       .post('/api/viajes/1/pasajeros')
-      .send({ usuarioId: 'u1', nombre: 'Ana' })
+      .set('Authorization', bearer(USUARIO_1))
+      .send({ usuarioId: 'u2', nombre: 'Nombre falso' })
       .expect(201);
 
     const respuesta = await request(app)
       .post('/api/viajes/1/pasajeros')
-      .send({ usuarioId: 'u2', nombre: 'Beto' })
+      .set('Authorization', bearer(USUARIO_2))
+      .send({})
       .expect(201);
 
     assert.equal(respuesta.body.asientosDisponibles, 0);
@@ -170,10 +199,14 @@ describe('POST /api/viajes/:id/pasajeros', () => {
   test('la división guardada coincide con GET /division del integrante 2', async () => {
     const { app } = crearAppDePrueba();
 
-    await request(app).post('/api/viajes/1/pasajeros').send({ usuarioId: 'u1' });
+    await request(app)
+      .post('/api/viajes/1/pasajeros')
+      .set('Authorization', bearer(USUARIO_1))
+      .send({});
     const { body: viaje } = await request(app)
       .post('/api/viajes/1/pasajeros')
-      .send({ usuarioId: 'u2' });
+      .set('Authorization', bearer(USUARIO_2))
+      .send({});
     const { body: division } = await request(app)
       .get('/api/viajes/1/division?modo=iguales')
       .expect(200);
@@ -186,10 +219,12 @@ describe('POST /api/viajes/:id/pasajeros', () => {
 
     await request(app)
       .post('/api/viajes/1/pasajeros')
-      .send({ usuarioId: 'u1', kmRecorridos: 2 });
+      .set('Authorization', bearer(USUARIO_1))
+      .send({ kmRecorridos: 2 });
     await request(app)
       .post('/api/viajes/1/pasajeros')
-      .send({ usuarioId: 'u2', kmRecorridos: 8 });
+      .set('Authorization', bearer(USUARIO_2))
+      .send({ kmRecorridos: 8 });
 
     const respuesta = await request(app)
       .get('/api/viajes/1/division?modo=km')
@@ -206,7 +241,8 @@ describe('POST /api/viajes/:id/pasajeros', () => {
 
     const respuesta = await request(app)
       .post('/api/viajes/2/pasajeros')
-      .send({ usuarioId: 'u1' })
+      .set('Authorization', bearer(USUARIO_1))
+      .send({})
       .expect(201);
 
     assert.equal(respuesta.body.asientosDisponibles, 0);
@@ -216,19 +252,26 @@ describe('POST /api/viajes/:id/pasajeros', () => {
   test('responde con los errores esperados', async () => {
     const { app, notificador } = crearAppDePrueba();
 
-    await request(app).post('/api/viajes/2/pasajeros').send({ usuarioId: 'u1' });
+    await request(app)
+      .post('/api/viajes/2/pasajeros')
+      .set('Authorization', bearer(USUARIO_1))
+      .send({});
 
     const casos = [
-      ['/api/viajes/999/pasajeros', { usuarioId: 'u9' }, 404, 'VIAJE_NO_ENCONTRADO'],
-      ['/api/viajes/abc/pasajeros', { usuarioId: 'u9' }, 400, 'ID_INVALIDO'],
-      ['/api/viajes/1/pasajeros', {}, 400, 'PASAJERO_INVALIDO'],
-      ['/api/viajes/1/pasajeros', { usuarioId: 'u9', kmRecorridos: 50 }, 400, 'PASAJERO_INVALIDO'],
-      ['/api/viajes/2/pasajeros', { usuarioId: 'u1' }, 409, 'PASAJERO_YA_SUMADO'],
-      ['/api/viajes/2/pasajeros', { usuarioId: 'u2' }, 409, 'SIN_ASIENTOS'],
+      ['/api/viajes/999/pasajeros', {}, USUARIO_9, 404, 'VIAJE_NO_ENCONTRADO'],
+      ['/api/viajes/abc/pasajeros', {}, USUARIO_9, 400, 'ID_INVALIDO'],
+      ['/api/viajes/1/pasajeros', { kmRecorridos: 0 }, USUARIO_9, 400, 'PASAJERO_INVALIDO'],
+      ['/api/viajes/1/pasajeros', { kmRecorridos: 50 }, USUARIO_9, 400, 'PASAJERO_INVALIDO'],
+      ['/api/viajes/2/pasajeros', {}, USUARIO_1, 409, 'PASAJERO_YA_SUMADO'],
+      ['/api/viajes/2/pasajeros', {}, USUARIO_2, 409, 'SIN_ASIENTOS'],
     ];
 
-    for (const [url, cuerpo, status, codigo] of casos) {
-      const respuesta = await request(app).post(url).send(cuerpo).expect(status);
+    for (const [url, cuerpo, usuario, status, codigo] of casos) {
+      const respuesta = await request(app)
+        .post(url)
+        .set('Authorization', bearer(usuario))
+        .send(cuerpo)
+        .expect(status);
       assert.equal(respuesta.body.error, codigo, `${url} ${JSON.stringify(cuerpo)}`);
     }
 
@@ -241,11 +284,18 @@ describe('DELETE /api/viajes/:id/pasajeros/:usuarioId', () => {
   test('baja al pasajero, devuelve el asiento, recalcula la división y avisa', async () => {
     const { app, notificador } = crearAppDePrueba();
 
-    await request(app).post('/api/viajes/1/pasajeros').send({ usuarioId: 'u1' });
-    await request(app).post('/api/viajes/1/pasajeros').send({ usuarioId: 'u2' });
+    await request(app)
+      .post('/api/viajes/1/pasajeros')
+      .set('Authorization', bearer(USUARIO_1))
+      .send({});
+    await request(app)
+      .post('/api/viajes/1/pasajeros')
+      .set('Authorization', bearer(USUARIO_2))
+      .send({});
 
     const respuesta = await request(app)
       .delete('/api/viajes/1/pasajeros/u1')
+      .set('Authorization', bearer(USUARIO_1))
       .expect(200);
 
     assert.equal(respuesta.body.asientosDisponibles, 1);
@@ -258,16 +308,20 @@ describe('DELETE /api/viajes/:id/pasajeros/:usuarioId', () => {
     ]);
     assert.equal(
       notificador.enviados.at(-1).mensaje,
-      'u1 se bajó del viaje 1. Asientos disponibles: 1.',
+      'Ana se bajó del viaje 1. Asientos disponibles: 1.',
     );
   });
 
   test('si se baja el último pasajero la división queda vacía', async () => {
     const { app } = crearAppDePrueba();
 
-    await request(app).post('/api/viajes/1/pasajeros').send({ usuarioId: 'u1' });
+    await request(app)
+      .post('/api/viajes/1/pasajeros')
+      .set('Authorization', bearer(USUARIO_1))
+      .send({});
     const respuesta = await request(app)
       .delete('/api/viajes/1/pasajeros/u1')
+      .set('Authorization', bearer(USUARIO_1))
       .expect(200);
 
     assert.equal(respuesta.body.asientosDisponibles, 2);
@@ -283,9 +337,50 @@ describe('DELETE /api/viajes/:id/pasajeros/:usuarioId', () => {
     ];
 
     for (const [url, codigo] of casos) {
-      const respuesta = await request(app).delete(url).expect(404);
+      const respuesta = await request(app)
+        .delete(url)
+        .set('Authorization', bearer(USUARIO_1))
+        .expect(404);
       assert.equal(respuesta.body.error, codigo, url);
     }
+  });
+
+  test('solo el propio pasajero o el conductor pueden darlo de baja', async () => {
+    const { app } = crearAppDePrueba();
+
+    await request(app)
+      .post('/api/viajes/1/pasajeros')
+      .set('Authorization', bearer(USUARIO_1))
+      .send({})
+      .expect(201);
+
+    const prohibido = await request(app)
+      .delete('/api/viajes/1/pasajeros/u1')
+      .set('Authorization', bearer(USUARIO_2))
+      .expect(403);
+    assert.equal(prohibido.body.error, 'PROHIBIDO');
+
+    await request(app)
+      .delete('/api/viajes/1/pasajeros/u1')
+      .set('Authorization', bearer(CONDUCTOR))
+      .expect(200);
+  });
+});
+
+describe('Autenticación de pasajeros', () => {
+  test('POST y DELETE rechazan solicitudes sin token', async () => {
+    const { app } = crearAppDePrueba();
+
+    const alta = await request(app)
+      .post('/api/viajes/1/pasajeros')
+      .send({})
+      .expect(401);
+    const baja = await request(app)
+      .delete('/api/viajes/1/pasajeros/u1')
+      .expect(401);
+
+    assert.equal(alta.body.error, 'NO_AUTENTICADO');
+    assert.equal(baja.body.error, 'NO_AUTENTICADO');
   });
 });
 
@@ -296,9 +391,13 @@ describe('Viajes que no están pendientes', () => {
 
     await request(contexto.app)
       .post('/api/viajes/1/pasajeros')
-      .send({ usuarioId: 'u1' })
+      .set('Authorization', bearer(USUARIO_1))
+      .send({})
       .expect(201);
-    await request(contexto.app).patch('/api/viajes/1/cancelar').expect(200);
+    await request(contexto.app)
+      .patch('/api/viajes/1/cancelar')
+      .set('Authorization', bearer(CONDUCTOR))
+      .expect(200);
 
     return contexto;
   }
@@ -321,7 +420,8 @@ describe('Viajes que no están pendientes', () => {
 
     const respuesta = await request(app)
       .post('/api/viajes/1/pasajeros')
-      .send({ usuarioId: 'u2' })
+      .set('Authorization', bearer(USUARIO_2))
+      .send({})
       .expect(409);
 
     assert.equal(respuesta.body.error, 'VIAJE_NO_MODIFICABLE');
@@ -334,6 +434,7 @@ describe('Viajes que no están pendientes', () => {
 
     const respuesta = await request(app)
       .delete('/api/viajes/1/pasajeros/u1')
+      .set('Authorization', bearer(USUARIO_1))
       .expect(409);
 
     assert.equal(respuesta.body.error, 'VIAJE_NO_MODIFICABLE');
@@ -346,10 +447,12 @@ describe('Viajes que no están pendientes', () => {
     // Sin el orden 404 -> 409 -> resto, estos darían 400 y 404.
     const sumarInvalido = await request(app)
       .post('/api/viajes/1/pasajeros')
-      .send({})
+      .set('Authorization', bearer(USUARIO_2))
+      .send({ kmRecorridos: 0 })
       .expect(409);
     const bajarInexistente = await request(app)
       .delete('/api/viajes/1/pasajeros/u9')
+      .set('Authorization', bearer(USUARIO_9))
       .expect(409);
 
     assert.equal(sumarInvalido.body.error, 'VIAJE_NO_MODIFICABLE');
