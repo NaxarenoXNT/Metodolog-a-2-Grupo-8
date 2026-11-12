@@ -2,8 +2,8 @@
 
 ## Objetivo y alcance
 
-Este documento reúne las decisiones de diseño tomadas para las features de
-viajes, costos y pasajeros. Su objetivo es dejar una única memoria localizable
+Este documento reúne las decisiones de diseño tomadas para viajes, costos,
+pasajeros, persistencia, autenticación y vehículos. Su objetivo es dejar una única memoria localizable
 para el Taller II: qué problema resuelve cada parte, qué código interviene, qué
 alternativas consideramos, qué decidimos y cuáles son los beneficios y costos de
 esas decisiones.
@@ -22,6 +22,9 @@ lo presenta como una funcionalidad terminada.
 | Cambios de pasajeros | Observer | Ejecutar todas las reacciones dentro de `PasajeroService` | Publicar eventos y separar cada reacción |
 | Notificaciones | Inyección de dependencias | Factory Method | Conservar un notificador inyectado mientras exista un solo canal |
 | Costos por vehículo | Configuración simple | Abstract Factory | No crear familias de objetos mientras la fórmula sea única |
+| Contratos de persistencia | Repository async | Mantener memoria sincrónica y condicionar los servicios | Usar el mismo contrato basado en `Promise` para memoria y PostgreSQL |
+| Actualización de pasajeros | Transacción PostgreSQL | Ejecutar `DELETE` e inserciones independientes | Reemplazar la lista completa dentro de una transacción |
+| Autenticación y permisos | JWT + bcrypt | Sesiones de servidor e identidad enviada en el body | Firmar identidad por 24 h y derivar usuario y conductor del token |
 
 No se eligieron patrones por cantidad. Se implementaron solo donde resuelven una
 variación o responsabilidad concreta; en los demás casos se documentó por qué
@@ -42,9 +45,21 @@ agregarlos ahora sería sobreingeniería.
 - Pasajeros y eventos: [`pasajero.service.js`](../backend/src/services/pasajero.service.js),
   [`PublicadorEventos.js`](../backend/src/domain/eventos/PublicadorEventos.js) y
   [`observadores/`](../backend/src/observadores/).
+- Persistencia: [`backend/src/db/`](../backend/src/db/),
+  [`backend/src/repositories/`](../backend/src/repositories/),
+  [`backend/db/migraciones/`](../backend/db/migraciones/) y
+  [`backend/scripts/migrar.js`](../backend/scripts/migrar.js).
+- Autenticación y vehículos: [`auth.service.js`](../backend/src/services/auth.service.js),
+  [`vehiculo.service.js`](../backend/src/services/vehiculo.service.js),
+  [`requiereAuth.js`](../backend/src/middleware/requiereAuth.js),
+  [`auth.routes.js`](../backend/src/routes/auth.routes.js) y
+  [`vehiculos.routes.js`](../backend/src/routes/vehiculos.routes.js).
 - Pruebas automatizadas: [`viajes.test.js`](../backend/test/viajes.test.js),
   [`costos.test.js`](../backend/test/costos.test.js) y
-  [`pasajeros.test.js`](../backend/test/pasajeros.test.js).
+  [`pasajeros.test.js`](../backend/test/pasajeros.test.js),
+  [`auth.test.js`](../backend/test/auth.test.js),
+  [`vehiculos.test.js`](../backend/test/vehiculos.test.js) y
+  [`repositorios.postgres.test.js`](../backend/test/repositorios.postgres.test.js).
 
 ## Criterios transversales de diseño y mantenibilidad
 
@@ -74,10 +89,9 @@ Smells y riesgos detectados:
 - Las clases de error se repiten parcialmente entre servicios. Por ahora son
   pocas, claras y tienen diferencias de dominio; crear una jerarquía común no
   aporta suficiente valor todavía.
-- Los observadores son sincrónicos y dependen del orden de suscripción. Está
-  explicitado en `crearApp`: primero asientos, después división y finalmente el
-  aviso. Es aceptable para el repositorio en memoria, pero no equivale a una
-  transacción.
+- Los observadores son asíncronos y se esperan en orden. Está explicitado en
+  `crearApp`: primero asientos, después división y finalmente el aviso. Ese orden
+  es parte del flujo y no equivale a una única transacción de aplicación.
 - `crearApp` es el punto de composición y por eso conoce muchas clases. No se lo
   divide mientras esa sea su única responsabilidad y el tamaño siga siendo
   manejable.
@@ -90,7 +104,8 @@ Smells y riesgos detectados:
   nueva reacción a pasajeros se agrega con otro observador.
 - **LSP:** cualquier proveedor que cumpla
   `calcularDistancia(origen, destino)` puede sustituir a Mapbox; las estrategias
-  comparten el contrato `dividir(costoTotal, pasajeros)`.
+  comparten el contrato `dividir(costoTotal, pasajeros)` y los repositorios en
+  memoria y PostgreSQL son intercambiables.
 - **ISP:** los contratos usados son pequeños. Un observador solo necesita
   `notificar` y un notificador solo necesita `enviar`.
 - **DIP:** `ViajeService`, `CostoService`, `PasajeroService` y los observadores
@@ -266,8 +281,144 @@ las reacciones; el costo es que el flujo queda distribuido y su orden importa.
 
 Hoy los observadores se ejecutan en el mismo proceso. Si uno falla después de
 que otro persistió su cambio, no existe rollback automático. Con una base real
-habrá que evaluar una transacción o un patrón de eventos persistentes; agregarlo
-ahora sería desproporcionado para un repositorio en memoria.
+la actualización de cada agregado es transaccional, pero la cadena completa de
+observadores no forma una única transacción. Un patrón de eventos persistentes
+sería desproporcionado para el alcance actual.
+
+## Decisión 4: contrato async para repositorios
+
+### 1. Código involucrado
+
+- [`viaje.repository.memoria.js`](../backend/src/repositories/viaje.repository.memoria.js)
+- [`viaje.repository.postgres.js`](../backend/src/repositories/viaje.repository.postgres.js)
+- [`viaje.service.js`](../backend/src/services/viaje.service.js)
+- [`costo.service.js`](../backend/src/services/costo.service.js)
+- [`pasajero.service.js`](../backend/src/services/pasajero.service.js)
+
+### 2. Problema
+
+El repositorio en memoria podía responder de forma sincrónica, pero PostgreSQL
+siempre requiere operaciones asíncronas. Mantener dos contratos habría obligado
+a los servicios y rutas a conocer qué infraestructura se está usando, rompiendo
+la sustitución y agregando condicionales en toda la aplicación.
+
+### 3. Alternativas consideradas
+
+- Conservar memoria sincrónica y adaptar únicamente PostgreSQL.
+- Detectar promesas dentro de cada servicio.
+- Definir desde el contrato que todos los métodos devuelven `Promise`.
+
+### 4. Decisión
+
+Todos los repositorios son async, incluso los de memoria. Servicios, rutas,
+publicador y observadores usan `await`. La selección de infraestructura queda en
+el punto de composición: con `DATABASE_URL` se usa PostgreSQL y sin ella se usa
+memoria.
+
+### 5. Evidencia y trade-offs
+
+La misma batería de contrato se ejecuta contra ambas implementaciones. El costo
+es usar asincronía donde la memoria no la necesita; el beneficio es que el
+negocio no cambia cuando cambia la infraestructura.
+
+## Decisión 5: persistencia PostgreSQL y transacción de pasajeros
+
+### 1. Código involucrado
+
+- [`001_esquema_inicial.sql`](../backend/db/migraciones/001_esquema_inicial.sql)
+- [`migrar.js`](../backend/scripts/migrar.js)
+- [`viaje.repository.postgres.js`](../backend/src/repositories/viaje.repository.postgres.js)
+- [`usuario.repository.postgres.js`](../backend/src/repositories/usuario.repository.postgres.js)
+- [`vehiculo.repository.postgres.js`](../backend/src/repositories/vehiculo.repository.postgres.js)
+
+### 2. Problema
+
+Un viaje se reconstruye con datos de viajes, vehículos, paradas, pasajeros y
+usuarios. Al actualizar pasajeros se reemplaza la lista completa. Si el borrado
+y las inserciones se ejecutaran de forma independiente, un error intermedio
+podría dejar pasajeros perdidos o una lista parcial.
+
+### 3. Alternativas consideradas
+
+- Ejecutar cada consulta directamente sobre el pool.
+- Incorporar un ORM y delegar las transacciones.
+- Mantener SQL explícito y delimitar la actualización con `BEGIN`, `COMMIT` y
+  `ROLLBACK`.
+
+### 4. Decisión
+
+Los repositorios PostgreSQL encapsulan SQL y traducen `snake_case` a `camelCase`.
+`ViajeRepositoryPostgres.actualizar` modifica el viaje, elimina la lista anterior
+y agrega la nueva dentro de una única transacción. Si cualquier pasajero falla,
+se ejecuta rollback y se conserva el estado anterior.
+
+Las migraciones también son SQL explícito y se registran en
+`schema_migraciones`. No se agregó un ORM porque existe un solo esquema pequeño
+y las consultas forman parte de la evidencia que se quiere explicar.
+
+### 5. Evidencia y trade-offs
+
+Las pruebas verifican el mismo contrato contra memoria y PostgreSQL, además de
+forzar un pasajero inválido para comprobar el rollback. También se validó que
+los datos sobrevivan al reinicio del servidor. El costo es escribir mapeos y SQL
+manual; el beneficio es control explícito de consultas y límites transaccionales.
+
+## Decisión 6: autenticación con JWT y bcrypt
+
+### Endpoints
+
+- `POST /api/auth/registro`
+- `POST /api/auth/login`
+- `GET /api/auth/yo`
+- `POST /api/vehiculos` y `GET /api/vehiculos`
+- Operaciones protegidas de viajes y pasajeros.
+
+### 1. Código involucrado
+
+- [`auth.service.js`](../backend/src/services/auth.service.js)
+- [`requiereAuth.js`](../backend/src/middleware/requiereAuth.js)
+- [`auth.routes.js`](../backend/src/routes/auth.routes.js)
+- [`vehiculo.service.js`](../backend/src/services/vehiculo.service.js)
+- [`viajes.routes.js`](../backend/src/routes/viajes.routes.js)
+- [`pasajeros.routes.js`](../backend/src/routes/pasajeros.routes.js)
+
+### 2. Problema
+
+Antes de autenticar, el cliente podía enviar `conductorId` y `usuarioId` en el
+body. Eso permite atribuir acciones a otra persona. También era necesario
+guardar contraseñas sin poder recuperarlas y distinguir falta de identidad,
+token inválido y falta de permisos.
+
+### 3. Alternativas consideradas
+
+- Sesiones guardadas en el servidor.
+- JWT firmado y con vencimiento.
+- Confiar en los ids enviados por el frontend.
+- Derivar identidad exclusivamente del token.
+
+### 4. Decisión
+
+Las contraseñas se almacenan con bcrypt y 10 rondas. Registro y login devuelven
+un JWT firmado con `JWT_SECRET` que vence en 24 horas. `requiereAuth` verifica el
+header `Authorization: Bearer`, expone `{ id, nombre, email }` en `req.usuario`
+y diferencia `NO_AUTENTICADO` de `TOKEN_INVALIDO`.
+
+La publicación toma `conductorId` del token; el alta de pasajeros toma
+`usuarioId` del token; solo el conductor puede cancelar y solo el propio
+pasajero o el conductor pueden darlo de baja. Un vehículo debe existir y
+pertenecer al conductor. Ninguna respuesta incluye `passwordHash`.
+
+Se eligió JWT porque el backend es una API pequeña, sin sesiones compartidas ni
+múltiples instancias que coordinar. Es una decisión de arquitectura y seguridad,
+no un patrón GoF.
+
+### 5. Evidencia y trade-offs
+
+Las pruebas cubren registro, email duplicado, login, vencimiento, firma inválida,
+aislamiento de vehículos y permisos de conductor y pasajero. JWT evita estado de
+sesión en el servidor, pero un token válido no se puede revocar antes de vencer.
+Una aplicación productiva requeriría rotación de secretos, refresh tokens o una
+estrategia de revocación y protección frente a intentos repetidos de login.
 
 ## Refactorizaciones y mejoras realizadas
 
@@ -280,16 +431,19 @@ ahora sería desproporcionado para un repositorio en memoria.
    README para reflejar el estado real.
 5. Se fijó Node.js 22.13 como mínimo para que la versión recomendada en `.nvmrc`
    sea compatible con Vite, ESLint y las dependencias actuales de Mapbox.
+6. Se unificaron los contratos de repositorios como async y se agregó la
+   implementación PostgreSQL con migraciones y transacciones.
+7. Se incorporaron registro, login, JWT, vehículos y autorización basada en la
+   identidad del token.
 
 ## Decisiones de alcance y deuda conocida
 
-- El repositorio en memoria es adecuado para el taller, pero no brinda
-  persistencia ni concurrencia. PostgreSQL sigue planificado.
 - El frontend todavía es la plantilla inicial y no consume la API.
-- Autenticación y autorización no están implementadas; las dependencias
-  instaladas no equivalen a una feature terminada.
-- El manejo transaccional de observadores se difiere hasta contar con
-  persistencia real.
+- Los JWT no tienen refresh ni revocación anticipada; es suficiente para el MVP
+  académico, no para producción.
+- PostgreSQL protege cada actualización del viaje, pero la secuencia completa
+  de observadores no es una única transacción de aplicación.
+- Las notificaciones siguen siendo por consola y no se persisten.
 - Las abstracciones descartadas se reevaluarán cuando exista una variación real,
   no por anticipación.
 
@@ -302,20 +456,26 @@ cd backend
 npm ci
 npm test
 
+# Con PostgreSQL de pruebas ya migrado (PowerShell)
+$env:DATABASE_URL="postgresql://grupo8:<POSTGRES_PASSWORD>@localhost:5432/viajes_test"
+npm run migrate
+npm test
+
 cd ../frontend
 npm ci
 npm run lint
 npm run build
 ```
 
-Usar Node.js 22.13 o superior. En el entorno local de verificación,
-`npm run lint` pasó; el build quedó bloqueado por un problema de instalación de
-una dependencia opcional nativa de Rolldown en Windows, aunque el paquete figura
-en el lockfile.
-No se agregó un binding específico de plataforma al proyecto: esa solución
-haría menos portable el repositorio. Ante ese error local, corresponde limpiar
-`frontend/node_modules`, ejecutar nuevamente `npm ci` con una versión compatible
-de Node/npm y repetir el build.
+Usar Node.js 22.13 o superior. Las pruebas que usan PostgreSQL solo deben apuntar
+a una base cuyo nombre termine en `_test`.
+
+En la verificación del 12 de noviembre de 2026, `npm run lint` del frontend
+pasó. El build no se considera verificado porque la terminal disponible usa
+Node.js 20.18 y Rolldown no pudo cargar su dependencia nativa opcional de
+Windows. El proyecto exige Node.js 22.13; corresponde seleccionar esa versión,
+ejecutar un `npm ci` limpio y repetir `npm run build`, sin agregar al repositorio
+un binding específico de plataforma.
 
 La evidencia principal para la evaluación es el código enlazado y las pruebas;
 este documento explica las decisiones, pero no reemplaza poder recorrer y
