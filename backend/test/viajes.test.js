@@ -4,17 +4,42 @@ const request = require('supertest');
 
 const crearApp = require('../src/app');
 const ViajeRepositoryMemoria = require('../src/repositories/viaje.repository.memoria');
+const VehiculoRepositoryMemoria = require('../src/repositories/vehiculo.repository.memoria');
 const MapboxAdapter = require('../src/adapters/MapboxAdapter');
+const {
+  JWT_SECRET_PRUEBAS,
+  crearUsuario,
+  bearer,
+} = require('../test-helpers/auth');
 
 const AHORA = new Date('2026-10-11T12:00:00.000Z');
+const CONDUCTOR = crearUsuario(1, {
+  nombre: 'Conductor de prueba',
+  email: 'conductor@example.com',
+});
+const AUTORIZACION_CONDUCTOR = bearer(CONDUCTOR);
+const VEHICULO = {
+  id: 10,
+  usuarioId: CONDUCTOR.id,
+  tipo: 'auto',
+  marca: 'Marca de prueba',
+  modelo: 'Auto de prueba',
+  capacidadAsientos: 4,
+  consumoL100km: 7.5,
+  tipoCombustible: 'nafta',
+};
+
+function crearAppDePrueba(dependencias = {}) {
+  return crearApp({
+    jwtSecret: JWT_SECRET_PRUEBAS,
+    vehiculoRepository: new VehiculoRepositoryMemoria([VEHICULO]),
+    ...dependencias,
+  });
+}
 
 function crearDatosValidos(cambios = {}) {
   return {
-    vehiculo: {
-      id: 10,
-      modelo: 'Auto de prueba',
-      capacidadAsientos: 4,
-    },
+    vehiculoId: VEHICULO.id,
     fecha: '2026-10-12T12:00:00.000Z',
     asientosDisponibles: 3,
     origen: {
@@ -36,7 +61,7 @@ function crearDatosValidos(cambios = {}) {
 }
 
 test('GET /api/viajes devuelve los dos viajes de ejemplo completos', async () => {
-  const app = crearApp();
+  const app = crearAppDePrueba();
 
   const respuesta = await request(app).get('/api/viajes').expect(200);
 
@@ -98,7 +123,7 @@ function distanciaEnLineaRecta(a, b) {
 }
 
 test('los viajes de ejemplo respetan el contrato y son coherentes entre sí', async () => {
-  const app = crearApp();
+  const app = crearAppDePrueba();
 
   const { body: viajes } = await request(app).get('/api/viajes').expect(200);
 
@@ -144,7 +169,7 @@ test('los viajes de ejemplo respetan el contrato y son coherentes entre sí', as
 });
 
 test('los viajes de ejemplo permiten calcular el costo, sumar un pasajero y cancelar', async () => {
-  const app = crearApp();
+  const app = crearAppDePrueba();
 
   // 690 km * 150 = 103500
   const costo = await request(app).get('/api/viajes/1/costo').expect(200);
@@ -152,11 +177,15 @@ test('los viajes de ejemplo permiten calcular el costo, sumar un pasajero y canc
 
   const suma = await request(app)
     .post('/api/viajes/1/pasajeros')
-    .send({ usuarioId: 'u1' })
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
+    .send({})
     .expect(201);
   assert.equal(suma.body.asientosDisponibles, 2);
 
-  const cancelado = await request(app).patch('/api/viajes/1/cancelar').expect(200);
+  const cancelado = await request(app)
+    .patch('/api/viajes/1/cancelar')
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
+    .expect(200);
   assert.equal(cancelado.body.estado, 'cancelado');
 });
 
@@ -168,15 +197,18 @@ test('POST /api/viajes publica un viaje válido y guarda la distancia del provee
       return 690;
     },
   };
-  const app = crearApp({ proveedorRutas, ahora: () => AHORA });
+  const app = crearAppDePrueba({ proveedorRutas, ahora: () => AHORA });
   const datos = crearDatosValidos();
 
   const creacion = await request(app)
     .post('/api/viajes')
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
     .send(datos)
     .expect(201);
 
   assert.equal(creacion.body.id, 3);
+  assert.equal(creacion.body.conductorId, CONDUCTOR.id);
+  assert.equal(creacion.body.vehiculo.id, VEHICULO.id);
   assert.equal(creacion.body.distanciaKm, 690);
   assert.equal(creacion.body.fecha, '2026-10-12T12:00:00.000Z');
   assert.deepEqual(llamadas, [
@@ -187,6 +219,42 @@ test('POST /api/viajes publica un viaje válido y guarda la distancia del provee
   assert.deepEqual(consulta.body, creacion.body);
 });
 
+test('POST /api/viajes exige un token válido', async () => {
+  const app = crearAppDePrueba({ ahora: () => AHORA });
+
+  const sinToken = await request(app)
+    .post('/api/viajes')
+    .send(crearDatosValidos())
+    .expect(401);
+  const tokenInvalido = await request(app)
+    .post('/api/viajes')
+    .set('Authorization', 'Bearer token-invalido')
+    .send(crearDatosValidos())
+    .expect(401);
+
+  assert.equal(sinToken.body.error, 'NO_AUTENTICADO');
+  assert.equal(tokenInvalido.body.error, 'TOKEN_INVALIDO');
+});
+
+test('POST /api/viajes rechaza un vehículo inexistente o de otro usuario', async () => {
+  const app = crearAppDePrueba({
+    ahora: () => AHORA,
+    vehiculoRepository: new VehiculoRepositoryMemoria([
+      { ...VEHICULO, usuarioId: 99 },
+    ]),
+  });
+
+  for (const vehiculoId of [VEHICULO.id, 999]) {
+    const respuesta = await request(app)
+      .post('/api/viajes')
+      .set('Authorization', AUTORIZACION_CONDUCTOR)
+      .send(crearDatosValidos({ vehiculoId }))
+      .expect(404);
+
+    assert.equal(respuesta.body.error, 'VEHICULO_NO_ENCONTRADO');
+  }
+});
+
 test('POST /api/viajes rechaza fechas pasadas antes de llamar al proveedor', async () => {
   let cantidadLlamadas = 0;
   const proveedorRutas = {
@@ -195,10 +263,11 @@ test('POST /api/viajes rechaza fechas pasadas antes de llamar al proveedor', asy
       return 690;
     },
   };
-  const app = crearApp({ proveedorRutas, ahora: () => AHORA });
+  const app = crearAppDePrueba({ proveedorRutas, ahora: () => AHORA });
 
   const respuesta = await request(app)
     .post('/api/viajes')
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
     .send(crearDatosValidos({ fecha: '2026-10-10T12:00:00.000Z' }))
     .expect(400);
 
@@ -208,10 +277,11 @@ test('POST /api/viajes rechaza fechas pasadas antes de llamar al proveedor', asy
 });
 
 test('POST /api/viajes rechaza más asientos que la capacidad del vehículo', async () => {
-  const app = crearApp({ ahora: () => AHORA });
+  const app = crearAppDePrueba({ ahora: () => AHORA });
 
   const respuesta = await request(app)
     .post('/api/viajes')
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
     .send(crearDatosValidos({ asientosDisponibles: 5 }))
     .expect(400);
 
@@ -223,10 +293,11 @@ test('POST /api/viajes rechaza más asientos que la capacidad del vehículo', as
 });
 
 test('POST /api/viajes rechaza paradas fuera de orden', async () => {
-  const app = crearApp({ ahora: () => AHORA });
+  const app = crearAppDePrueba({ ahora: () => AHORA });
 
   const respuesta = await request(app)
     .post('/api/viajes')
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
     .send(
       crearDatosValidos({
         paradas: [
@@ -245,10 +316,11 @@ test('POST /api/viajes rechaza paradas fuera de orden', async () => {
 });
 
 test('POST /api/viajes rechaza coordenadas nulas o vacías', async () => {
-  const app = crearApp({ ahora: () => AHORA });
+  const app = crearAppDePrueba({ ahora: () => AHORA });
 
   const respuesta = await request(app)
     .post('/api/viajes')
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
     .send(
       crearDatosValidos({
         origen: { nombre: 'Origen inválido', lat: null, lng: '' },
@@ -266,10 +338,11 @@ test('POST /api/viajes rechaza coordenadas nulas o vacías', async () => {
 });
 
 test('POST /api/viajes responde 400 si el cuerpo JSON es null', async () => {
-  const app = crearApp({ ahora: () => AHORA });
+  const app = crearAppDePrueba({ ahora: () => AHORA });
 
   const respuesta = await request(app)
     .post('/api/viajes')
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
     .set('Content-Type', 'application/json')
     .send('null')
     .expect(400);
@@ -279,7 +352,7 @@ test('POST /api/viajes responde 400 si el cuerpo JSON es null', async () => {
 });
 
 test('GET /api/viajes/:id responde 404 cuando el viaje no existe', async () => {
-  const app = crearApp();
+  const app = crearAppDePrueba();
 
   const respuesta = await request(app).get('/api/viajes/999').expect(404);
 
@@ -287,7 +360,7 @@ test('GET /api/viajes/:id responde 404 cuando el viaje no existe', async () => {
 });
 
 test('GET /api/viajes/:id responde 400 cuando el id es inválido', async () => {
-  const app = crearApp();
+  const app = crearAppDePrueba();
 
   const respuesta = await request(app).get('/api/viajes/no-es-id').expect(400);
 
@@ -295,7 +368,7 @@ test('GET /api/viajes/:id responde 400 cuando el id es inválido', async () => {
 });
 
 function crearAppConProveedor() {
-  return crearApp({
+  return crearAppDePrueba({
     ahora: () => AHORA,
     proveedorRutas: { calcularDistancia: async () => 690 },
   });
@@ -304,6 +377,7 @@ function crearAppConProveedor() {
 async function publicarViaje(app, cambios) {
   const { body } = await request(app)
     .post('/api/viajes')
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
     .send(crearDatosValidos(cambios))
     .expect(201);
 
@@ -324,6 +398,7 @@ test('PATCH /api/viajes/:id/cancelar cancela un viaje pendiente', async () => {
 
   const respuesta = await request(app)
     .patch(`/api/viajes/${viaje.id}/cancelar`)
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
     .expect(200);
 
   assert.deepEqual(respuesta.body, { ...viaje, estado: 'cancelado' });
@@ -336,19 +411,44 @@ test('PATCH /api/viajes/:id/cancelar responde 409 VIAJE_NO_MODIFICABLE si ya est
   const app = crearAppConProveedor();
   const viaje = await publicarViaje(app);
 
-  await request(app).patch(`/api/viajes/${viaje.id}/cancelar`).expect(200);
+  await request(app)
+    .patch(`/api/viajes/${viaje.id}/cancelar`)
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
+    .expect(200);
   const respuesta = await request(app)
     .patch(`/api/viajes/${viaje.id}/cancelar`)
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
     .expect(409);
 
   assert.equal(respuesta.body.error, 'VIAJE_NO_MODIFICABLE');
 });
 
+test('PATCH /api/viajes/:id/cancelar solo permite al conductor', async () => {
+  const app = crearAppConProveedor();
+  const viaje = await publicarViaje(app);
+  const otroUsuario = crearUsuario(2);
+
+  const respuesta = await request(app)
+    .patch(`/api/viajes/${viaje.id}/cancelar`)
+    .set('Authorization', bearer(otroUsuario))
+    .expect(403);
+
+  assert.equal(respuesta.body.error, 'PROHIBIDO');
+  const consulta = await request(app).get(`/api/viajes/${viaje.id}`).expect(200);
+  assert.equal(consulta.body.estado, 'pendiente');
+});
+
 test('PATCH /api/viajes/:id/cancelar responde 404 si no existe y 400 si el id es inválido', async () => {
   const app = crearAppConProveedor();
 
-  const noExiste = await request(app).patch('/api/viajes/999/cancelar').expect(404);
-  const invalido = await request(app).patch('/api/viajes/abc/cancelar').expect(400);
+  const noExiste = await request(app)
+    .patch('/api/viajes/999/cancelar')
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
+    .expect(404);
+  const invalido = await request(app)
+    .patch('/api/viajes/abc/cancelar')
+    .set('Authorization', AUTORIZACION_CONDUCTOR)
+    .expect(400);
 
   assert.equal(noExiste.body.error, 'VIAJE_NO_ENCONTRADO');
   assert.equal(invalido.body.error, 'ID_INVALIDO');
@@ -371,7 +471,7 @@ function crearViajesParaFiltros() {
 }
 
 function crearAppConViajesParaFiltros() {
-  return crearApp({
+  return crearAppDePrueba({
     viajeRepository: new ViajeRepositoryMemoria(crearViajesParaFiltros()),
   });
 }
@@ -710,7 +810,7 @@ test.describe('MapboxAdapter: tiempo límite con fetch stubbeado', () => {
     );
   });
 
-  test('si Mapbox no responde a tiempo, POST /api/viajes responde 502 PROVEEDOR_RUTAS_NO_DISPONIBLE', async (t) => {
+  test('si Mapbox no responde a tiempo, POST /api/viajes responde 502 sin filtrar el código interno', async (t) => {
     // El timeout "vence" a los 5 ms en lugar de a los 10 s.
     t.mock.method(AbortSignal, 'timeout', () => {
       const controlador = new AbortController();
@@ -737,17 +837,18 @@ test.describe('MapboxAdapter: tiempo límite con fetch stubbeado', () => {
         signal.addEventListener('abort', () => rechazar(signal.reason), { once: true });
       });
     });
-    const app = crearApp({
+    const app = crearAppDePrueba({
       ahora: () => AHORA,
       proveedorRutas: new MapboxAdapter('token-de-prueba'),
     });
 
     const respuesta = await request(app)
       .post('/api/viajes')
+      .set('Authorization', AUTORIZACION_CONDUCTOR)
       .send(crearDatosValidos())
       .expect(502);
 
-    assert.equal(respuesta.body.error, 'PROVEEDOR_RUTAS_NO_DISPONIBLE');
+    assert.equal(respuesta.body.error, 'ERROR_INTERNO');
     assert.equal(fetchFalso.mock.callCount(), 1);
 
     // El viaje no se guardó: el próximo id libre (3) sigue sin existir.

@@ -3,8 +3,14 @@ const assert = require('node:assert/strict');
 
 const CostoService = require('../src/services/costo.service');
 const ViajeRepositoryMemoria = require('../src/repositories/viaje.repository.memoria');
+const VehiculoRepositoryMemoria = require('../src/repositories/vehiculo.repository.memoria');
 const PartesIguales = require('../src/domain/division/PartesIguales');
 const PorKilometro = require('../src/domain/division/PorKilometro');
+const {
+  JWT_SECRET_PRUEBAS,
+  crearUsuario,
+  bearer,
+} = require('../test-helpers/auth');
 
 function sumar(division) {
   return Math.round(division.reduce((s, parte) => s + parte.monto * 100, 0)) / 100;
@@ -133,7 +139,10 @@ describe('Endpoints de costos', () => {
   const crearApp = require('../src/app');
 
   function crearAppConViajes(viajes) {
-    return crearApp({ viajeRepository: new ViajeRepositoryMemoria(viajes) });
+    return crearApp({
+      jwtSecret: JWT_SECRET_PRUEBAS,
+      viajeRepository: new ViajeRepositoryMemoria(viajes),
+    });
   }
 
   const viajes = [
@@ -183,15 +192,25 @@ describe('Endpoints de costos', () => {
   });
 
   test('el costo de un viaje publicado usa la distancia del proveedor', async () => {
+    const conductor = crearUsuario(1);
+    const vehiculo = {
+      id: 1,
+      usuarioId: conductor.id,
+      tipo: 'auto',
+      capacidadAsientos: 4,
+    };
     const app = crearApp({
+      jwtSecret: JWT_SECRET_PRUEBAS,
+      vehiculoRepository: new VehiculoRepositoryMemoria([vehiculo]),
       ahora: () => new Date('2026-10-11T12:00:00.000Z'),
       proveedorRutas: { calcularDistancia: async () => 690 },
     });
 
     const { body: viaje } = await request(app)
       .post('/api/viajes')
+      .set('Authorization', bearer(conductor))
       .send({
-        vehiculo: { capacidadAsientos: 4 },
+        vehiculoId: vehiculo.id,
         fecha: '2026-10-12T12:00:00.000Z',
         asientosDisponibles: 3,
         origen: { lat: -38.7183, lng: -62.2663 },
