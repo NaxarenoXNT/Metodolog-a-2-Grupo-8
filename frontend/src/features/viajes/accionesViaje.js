@@ -56,6 +56,14 @@ export function formatearMonto(monto) {
   return formatoMonto.format(monto)
 }
 
+export function formatearDistancia(distanciaKm) {
+  if (distanciaKm === null || distanciaKm === undefined) {
+    return 'Distancia no calculada'
+  }
+
+  return `${distanciaKm} km`
+}
+
 export function nombreUbicacion({ lat, lng }) {
   const ciudad = ciudades.find(
     (actual) =>

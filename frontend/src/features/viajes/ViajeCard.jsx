@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom'
 
 import Card from '../../components/ui/Card.jsx'
-import { formatearFecha, nombreUbicacion } from './accionesViaje.js'
+import {
+  formatearDistancia,
+  formatearFecha,
+  nombreUbicacion,
+} from './accionesViaje.js'
 
 function textoAsientos(asientos) {
   if (asientos === 0) {
@@ -9,14 +13,6 @@ function textoAsientos(asientos) {
   }
 
   return asientos === 1 ? '1 asiento disponible' : `${asientos} asientos disponibles`
-}
-
-function textoDistancia(distanciaKm) {
-  if (distanciaKm === null || distanciaKm === undefined) {
-    return 'Distancia no calculada'
-  }
-
-  return `${distanciaKm} km`
 }
 
 export default function ViajeCard({ viaje }) {
@@ -34,7 +30,7 @@ export default function ViajeCard({ viaje }) {
           {viaje.vehiculo?.marca} {viaje.vehiculo?.modelo}
         </li>
         <li>{textoAsientos(viaje.asientosDisponibles)}</li>
-        <li>{textoDistancia(viaje.distanciaKm)}</li>
+        <li>{formatearDistancia(viaje.distanciaKm)}</li>
       </ul>
 
       <Link
