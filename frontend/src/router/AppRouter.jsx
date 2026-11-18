@@ -4,6 +4,7 @@ import RutaProtegida from '../auth/RutaProtegida.jsx'
 import Layout from '../components/layout/Layout.jsx'
 import LoginPage from '../features/auth/LoginPage.jsx'
 import RegistroPage from '../features/auth/RegistroPage.jsx'
+import ViajesPage from '../features/viajes/ViajesPage.jsx'
 import NotFoundPage from '../pages/NotFoundPage.jsx'
 import PlaceholderPage from '../pages/PlaceholderPage.jsx'
 
@@ -12,16 +13,7 @@ export default function AppRouter() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/viajes" replace />} />
-        <Route
-          path="/viajes"
-          element={
-            <PlaceholderPage
-              eyebrow="Explorá nuevas rutas"
-              title="Tu próximo viaje empieza acá"
-              description="El buscador y el listado de viajes se incorporarán sobre esta base compartida."
-            />
-          }
-        />
+        <Route path="/viajes" element={<ViajesPage />} />
         <Route
           path="/viajes/:id"
           element={
