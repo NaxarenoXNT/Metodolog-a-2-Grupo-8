@@ -4,6 +4,7 @@ import RutaProtegida from '../auth/RutaProtegida.jsx'
 import Layout from '../components/layout/Layout.jsx'
 import LoginPage from '../features/auth/LoginPage.jsx'
 import RegistroPage from '../features/auth/RegistroPage.jsx'
+import ViajeDetallePage from '../features/viajes/ViajeDetallePage.jsx'
 import ViajesPage from '../features/viajes/ViajesPage.jsx'
 import NotFoundPage from '../pages/NotFoundPage.jsx'
 import PlaceholderPage from '../pages/PlaceholderPage.jsx'
@@ -14,16 +15,7 @@ export default function AppRouter() {
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/viajes" replace />} />
         <Route path="/viajes" element={<ViajesPage />} />
-        <Route
-          path="/viajes/:id"
-          element={
-            <PlaceholderPage
-              eyebrow="Detalle del viaje"
-              title="Información de la ruta"
-              description="Este punto de integración queda preparado para el detalle y la reserva de pasajeros."
-            />
-          }
-        />
+        <Route path="/viajes/:id" element={<ViajeDetallePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/registro" element={<RegistroPage />} />
 
