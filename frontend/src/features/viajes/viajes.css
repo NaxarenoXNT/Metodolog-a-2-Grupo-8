@@ -77,13 +77,13 @@
   background: var(--danger-soft);
 }
 
-.alert--info {
+.alert.alert--info {
   border-color: var(--line);
   color: var(--brand);
   background: var(--brand-soft);
 }
 
-.alert--info .alert__icon {
+.alert.alert--info .alert__icon {
   background: var(--brand);
 }
 
@@ -182,13 +182,13 @@
   font-size: 14px;
 }
 
-.alert--success {
+.alert.alert--success {
   border-color: var(--line);
   color: var(--brand);
   background: var(--brand-soft);
 }
 
-.alert--success .alert__icon {
+.alert.alert--success .alert__icon {
   background: var(--brand);
 }
 
