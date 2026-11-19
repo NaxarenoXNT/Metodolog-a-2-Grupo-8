@@ -77,16 +77,6 @@
   background: var(--danger-soft);
 }
 
-.alert.alert--info {
-  border-color: var(--line);
-  color: var(--brand);
-  background: var(--brand-soft);
-}
-
-.alert.alert--info .alert__icon {
-  background: var(--brand);
-}
-
 .detalle-volver,
 .detalle-volver-link {
   justify-self: start;
@@ -180,16 +170,6 @@
 .pasajeros-lista__km {
   color: var(--ink-soft);
   font-size: 14px;
-}
-
-.alert.alert--success {
-  border-color: var(--line);
-  color: var(--brand);
-  background: var(--brand-soft);
-}
-
-.alert.alert--success .alert__icon {
-  background: var(--brand);
 }
 
 .sumarme-form {
