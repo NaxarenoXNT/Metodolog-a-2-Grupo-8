@@ -16,11 +16,11 @@ export default function LoginPage() {
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
 
-  if (estaAutenticado) {
-    return <Navigate to="/viajes" replace />
-  }
-
   const destino = location.state?.from?.pathname || '/viajes'
+
+  if (estaAutenticado) {
+    return <Navigate to={destino} replace />
+  }
 
   function actualizarCampo(event) {
     setFormulario((actual) => ({
