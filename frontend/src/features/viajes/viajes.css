@@ -181,3 +181,29 @@
   color: var(--ink-soft);
   font-size: 14px;
 }
+
+.alert--success {
+  border-color: var(--line);
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.alert--success .alert__icon {
+  background: var(--brand);
+}
+
+.sumarme-form {
+  display: grid;
+  gap: 14px;
+}
+
+.sumarme-form .button {
+  justify-self: start;
+}
+
+.pasajeros-lista__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
