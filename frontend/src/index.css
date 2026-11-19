@@ -928,3 +928,23 @@ h3 {
     transition-duration: 0.01ms !important;
   }
 }
+
+.alert--info {
+  border-color: rgba(18, 59, 58, 0.2);
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.alert--info .alert__icon {
+  background: var(--brand);
+}
+
+.alert--success {
+  border-color: rgba(18, 59, 58, 0.25);
+  color: var(--brand-strong);
+  background: #e6f4ea;
+}
+
+.alert--success .alert__icon {
+  background: #2f7d4f;
+}

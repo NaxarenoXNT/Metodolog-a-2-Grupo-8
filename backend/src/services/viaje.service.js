@@ -86,6 +86,7 @@ class ViajeService {
     return this.viajeRepository.guardar({
       ...viajeValidado,
       conductorId: datosViaje.conductorId,
+      conductorNombre: datosViaje.conductorNombre,
       distanciaKm,
     });
   }

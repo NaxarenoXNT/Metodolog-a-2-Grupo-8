@@ -66,6 +66,7 @@ function crearEntradaViaje(datos, opciones) {
 
   return {
     conductorId: datos.conductorId,
+    conductorNombre: datos.conductorNombre,
     vehiculo: structuredClone(datos.vehiculo),
     fecha,
     asientosDisponibles,
@@ -105,7 +106,7 @@ async function verificarListado(repo, filtros, { incluidos = [], excluidos = [] 
 // --- Batería compartida -----------------------------------------------------
 // crearContexto devuelve { repo, datos, registrarViaje }. datos tiene la forma
 // que devolverían los repositorios de PostgreSQL:
-// { conductorId, vehiculo (con id), pasajeros: [{ usuarioId (string), nombre }] }.
+// { conductorId, conductorNombre, vehiculo (con id), pasajeros: [{ usuarioId (string), nombre }] }.
 
 function probarContratoViajes(nombre, crearContexto) {
   describe(`Contrato ViajeRepository — ${nombre}`, () => {
@@ -347,6 +348,7 @@ probarContratoViajes('memoria', () => ({
   repo: new ViajeRepositoryMemoria([]),
   datos: {
     conductorId: 1,
+    conductorNombre: 'Conductor',
     vehiculo: {
       id: 1,
       usuarioId: 1,
@@ -422,6 +424,7 @@ describe('Repositorios PostgreSQL', { skip: MOTIVO_SALTEO_POSTGRES ?? false }, (
 
     datos = {
       conductorId: conductor.id,
+      conductorNombre: conductor.nombre,
       vehiculo,
       pasajeros: pasajeros.map((usuario) => ({ usuarioId: String(usuario.id), nombre: usuario.nombre })),
     };
