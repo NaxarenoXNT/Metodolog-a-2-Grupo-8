@@ -9,6 +9,7 @@ import Card from '../../components/ui/Card.jsx'
 import Input from '../../components/ui/Input.jsx'
 import Spinner from '../../components/ui/Spinner.jsx'
 import DatosViaje from './DatosViaje.jsx'
+import DivisionGastos from './DivisionGastos.jsx'
 import PasajerosViaje from './PasajerosViaje.jsx'
 import { permisosViaje } from './accionesViaje.js'
 import { useCarga } from './useCarga.js'
@@ -213,6 +214,8 @@ export default function ViajeDetallePage() {
         enCurso={enCurso}
         onBajar={bajar}
       />
+
+      <DivisionGastos viaje={viaje} />
     </div>
   )
 }

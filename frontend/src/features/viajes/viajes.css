@@ -207,3 +207,23 @@
   align-items: center;
   gap: 12px;
 }
+
+.division-modos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.division-cargando {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.division-total {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
