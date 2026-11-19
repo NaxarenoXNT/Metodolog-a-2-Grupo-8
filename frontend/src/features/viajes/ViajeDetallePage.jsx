@@ -165,10 +165,7 @@ export default function ViajeDetallePage() {
         <Alert tone="info">Este viaje fue cancelado; ya no admite cambios.</Alert>
       ) : null}
 
-      <DatosViaje
-        viaje={viaje}
-        nombreConductor={permisos.esConductor ? usuario.nombre : null}
-      />
+      <DatosViaje viaje={viaje} />
 
       {hayAcciones ? (
         <Card className="detalle-card">

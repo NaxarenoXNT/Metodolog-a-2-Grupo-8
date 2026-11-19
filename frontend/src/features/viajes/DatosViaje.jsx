@@ -5,7 +5,7 @@ import {
   nombreUbicacion,
 } from './accionesViaje.js'
 
-export default function DatosViaje({ viaje, nombreConductor }) {
+export default function DatosViaje({ viaje }) {
   const { vehiculo, paradas = [] } = viaje
 
   return (
@@ -23,7 +23,7 @@ export default function DatosViaje({ viaje, nombreConductor }) {
         </div>
         <div>
           <dt>Conductor</dt>
-          <dd>{nombreConductor || `Usuario #${viaje.conductorId}`}</dd>
+          <dd>{viaje.conductorNombre || `Usuario #${viaje.conductorId}`}</dd>
         </div>
         <div>
           <dt>Vehículo</dt>
