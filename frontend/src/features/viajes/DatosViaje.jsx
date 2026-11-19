@@ -34,7 +34,11 @@ export default function DatosViaje({ viaje, nombreConductor }) {
         </div>
         <div>
           <dt>Asientos disponibles</dt>
-          <dd>{viaje.asientosDisponibles}</dd>
+          <dd>
+            {viaje.asientosDisponibles > 0
+              ? viaje.asientosDisponibles
+              : 'Sin asientos'}
+          </dd>
         </div>
         <div>
           <dt>Distancia</dt>

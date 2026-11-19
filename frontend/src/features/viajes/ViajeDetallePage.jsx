@@ -137,9 +137,17 @@ export default function ViajeDetallePage() {
 
   const permisos = permisosViaje(viaje, usuario)
   const pendiente = viaje.estado === 'pendiente'
-  const invitarLogin = !usuario && pendiente
+  const sinAsientos =
+    pendiente &&
+    !permisos.esConductor &&
+    !permisos.participa &&
+    !(viaje.asientosDisponibles > 0)
+  const invitarLogin = !usuario && pendiente && !sinAsientos
   const hayAcciones =
-    invitarLogin || permisos.puedeSumarse || permisos.puedeCancelar
+    invitarLogin ||
+    sinAsientos ||
+    permisos.puedeSumarse ||
+    permisos.puedeCancelar
 
   return (
     <div className="viajes-page container">
@@ -165,6 +173,10 @@ export default function ViajeDetallePage() {
       {hayAcciones ? (
         <Card className="detalle-card">
           <h2>Acciones</h2>
+
+          {sinAsientos ? (
+            <p className="viajes-vacio">No quedan asientos disponibles.</p>
+          ) : null}
 
           {invitarLogin ? (
             <Link
