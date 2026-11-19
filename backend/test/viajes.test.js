@@ -208,6 +208,7 @@ test('POST /api/viajes publica un viaje válido y guarda la distancia del provee
 
   assert.equal(creacion.body.id, 3);
   assert.equal(creacion.body.conductorId, CONDUCTOR.id);
+  assert.equal(creacion.body.conductorNombre, CONDUCTOR.nombre);
   assert.equal(creacion.body.vehiculo.id, VEHICULO.id);
   assert.equal(creacion.body.distanciaKm, 690);
   assert.equal(creacion.body.fecha, '2026-10-12T12:00:00.000Z');

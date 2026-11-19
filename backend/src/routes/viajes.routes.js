@@ -46,6 +46,7 @@ function crearViajesRouter({ viajeService, vehiculoService, requiereAuth }) {
       const viaje = await viajeService.publicar({
         ...cuerpo,
         conductorId: req.usuario.id,
+        conductorNombre: req.usuario.nombre,
         vehiculoId: vehiculo.id,
         vehiculo,
       });

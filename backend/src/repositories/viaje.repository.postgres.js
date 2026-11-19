@@ -21,6 +21,7 @@ const SELECT_VIAJES = `
     v.asientos_disponibles,
     v.modo_division,
     v.estado,
+    uc.nombre AS conductor_nombre,
     ve.usuario_id AS vehiculo_usuario_id,
     ve.tipo AS vehiculo_tipo,
     ve.marca AS vehiculo_marca,
@@ -29,7 +30,8 @@ const SELECT_VIAJES = `
     ve.consumo_l_100km AS vehiculo_consumo_l_100km,
     ve.tipo_combustible AS vehiculo_tipo_combustible
   FROM viajes v
-  JOIN vehiculos ve ON ve.id = v.vehiculo_id`;
+  JOIN vehiculos ve ON ve.id = v.vehiculo_id
+  JOIN usuarios uc ON uc.id = v.conductor_id`;
 
 // pg devuelve NUMERIC como string. Los servicios usan Number.isFinite, así
 // que se convierte a número; NULL se conserva (Number(null) daría 0).
@@ -49,6 +51,7 @@ function filaAViaje(fila, paradas = [], pasajeros = []) {
   return {
     id: fila.id,
     conductorId: fila.conductor_id,
+    conductorNombre: fila.conductor_nombre,
     vehiculo: filaAVehiculo({
       id: fila.vehiculo_id,
       usuario_id: fila.vehiculo_usuario_id,
