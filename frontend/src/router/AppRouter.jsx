@@ -4,10 +4,11 @@ import RutaProtegida from '../auth/RutaProtegida.jsx'
 import Layout from '../components/layout/Layout.jsx'
 import LoginPage from '../features/auth/LoginPage.jsx'
 import RegistroPage from '../features/auth/RegistroPage.jsx'
+import PublicarViajePage from '../features/publicacion/PublicarViajePage.jsx'
+import VehiculosPage from '../features/vehiculos/VehiculosPage.jsx'
 import ViajeDetallePage from '../features/viajes/ViajeDetallePage.jsx'
 import ViajesPage from '../features/viajes/ViajesPage.jsx'
 import NotFoundPage from '../pages/NotFoundPage.jsx'
-import PlaceholderPage from '../pages/PlaceholderPage.jsx'
 
 export default function AppRouter() {
   return (
@@ -20,28 +21,8 @@ export default function AppRouter() {
         <Route path="/registro" element={<RegistroPage />} />
 
         <Route element={<RutaProtegida />}>
-          <Route
-            path="/viajes/nuevo"
-            element={
-              <PlaceholderPage
-                eyebrow="Publicar un viaje"
-                title="Compartí tu próxima ruta"
-                description="La ruta ya exige una sesión válida y está lista para recibir el formulario de publicación."
-                action={{ to: '/vehiculos', label: 'Revisar mis vehículos' }}
-              />
-            }
-          />
-          <Route
-            path="/vehiculos"
-            element={
-              <PlaceholderPage
-                eyebrow="Mis vehículos"
-                title="Gestioná con qué vehículo viajás"
-                description="La ruta ya exige una sesión válida y está preparada para integrar altas y listados."
-                action={{ to: '/viajes/nuevo', label: 'Publicar un viaje' }}
-              />
-            }
-          />
+          <Route path="/viajes/nuevo" element={<PublicarViajePage />} />
+          <Route path="/vehiculos" element={<VehiculosPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />
