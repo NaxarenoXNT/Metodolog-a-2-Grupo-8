@@ -1,3 +1,5 @@
+export const LIMITE_DESCRIPCION_PARADA = 150
+
 function texto(valor) {
   return String(valor ?? '').trim()
 }
@@ -44,6 +46,25 @@ export function validarViaje(form, vehiculo) {
   } else if (form.origen && mismaUbicacion(form.origen, form.destino)) {
     errores.destino = 'El destino tiene que ser distinto del origen.'
   }
+
+  ;(form.paradas ?? []).forEach((parada, indice) => {
+    const lat = aNumero(parada.lat)
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+      errores[`paradas.${indice}.lat`] =
+        'Ingresá una latitud entre -90 y 90.'
+    }
+
+    const lng = aNumero(parada.lng)
+    if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+      errores[`paradas.${indice}.lng`] =
+        'Ingresá una longitud entre -180 y 180.'
+    }
+
+    if (texto(parada.descripcion).length > LIMITE_DESCRIPCION_PARADA) {
+      errores[`paradas.${indice}.descripcion`] =
+        `La descripción no puede superar los ${LIMITE_DESCRIPCION_PARADA} caracteres.`
+    }
+  })
 
   return errores
 }

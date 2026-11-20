@@ -8,6 +8,7 @@ import Card from '../../components/ui/Card.jsx'
 import Input from '../../components/ui/Input.jsx'
 import Spinner from '../../components/ui/Spinner.jsx'
 import { useCarga } from '../viajes/useCarga.js'
+import ParadasForm from './ParadasForm.jsx'
 import UbicacionForm from './UbicacionForm.jsx'
 import { construirCuerpoViaje, publicacionApi } from './publicacion.api.js'
 import { validarViaje } from './validaciones.js'
@@ -215,6 +216,14 @@ function FormularioPublicacion({ vehiculos, onVehiculoInvalido, onEnviando }) {
             error={errores.destino}
             excluir={form.origen}
           />
+
+          <div className="publicar-grid__ancho">
+            <ParadasForm
+              paradas={form.paradas}
+              onChange={(paradas) => cambiar('paradas', paradas)}
+              errores={errores}
+            />
+          </div>
         </div>
 
         {errorApi ? (
