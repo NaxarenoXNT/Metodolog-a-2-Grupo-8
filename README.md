@@ -14,14 +14,16 @@ El backend permite:
 - Calcular el costo del viaje y dividirlo en partes iguales o por kilómetros.
 - Persistir usuarios, vehículos, viajes, paradas y pasajeros en PostgreSQL.
 
-El frontend todavía es una plantilla inicial de Vite. La interfaz de producto
-se desarrollará después de estabilizar el contrato de la API.
+Desde la interfaz se puede consultar el listado público de viajes, filtrar por
+estado y fecha y abrir el detalle. Al registrarse o iniciar sesión se habilitan
+las pantallas protegidas para registrar vehículos propios y publicar viajes con
+paradas. Desde el detalle, un pasajero puede sumarse, consultar la división de
+gastos y bajarse. El conductor puede quitar pasajeros y cancelar el viaje.
 
 ## Equipo
 
 - **Sanger Alejo**
 - **Nazareno Negrete**
-- **Nicolás Friedrich**
 - **Luciano Kloster**
 
 ## Stack tecnológico
@@ -57,6 +59,9 @@ documentados en
   690 km en desarrollo.
 
 ## Inicio rápido
+
+Los ejemplos usan PowerShell. En Bash, usá `cp .env.example .env` donde
+aparece `Copy-Item .env.example .env`. Copiá los ejemplos solo la primera vez.
 
 ### 1. Configurar y levantar PostgreSQL
 
@@ -127,8 +132,8 @@ El frontend queda disponible en `http://localhost:5173` y usa
 
 | Variable | Obligatoria | Uso |
 |---|---:|---|
-| `VITE_API_URL` | Sí | URL base del backend. |
-| `VITE_MAPBOX_TOKEN` | No por ahora | Token para integrar el mapa en la interfaz. |
+| `VITE_API_URL` | No | URL base de la API. Por defecto, `http://localhost:3000`. |
+| `VITE_MAPBOX_TOKEN` | No | Reservado para el futuro mapa. Se puede dejar vacío. |
 
 ## Endpoints principales
 
@@ -179,7 +184,7 @@ pasajeros de un viaje.
 
 ## Alcance del MVP académico
 
-El MVP cubre el recorrido principal del backend: registrarse, crear un vehículo,
+El MVP permite, desde el navegador, registrarse, crear un vehículo,
 publicar un viaje, sumar o bajar pasajeros, dividir gastos y cancelar, con datos
 persistidos en PostgreSQL.
 
@@ -189,7 +194,7 @@ Quedan fuera del alcance actual:
 - Estaciones de servicio.
 - Notificaciones persistidas o canales reales.
 - Pagos.
-- Frontend completo.
+- Mapa interactivo del recorrido en la interfaz.
 
 ## Flujo de trabajo
 

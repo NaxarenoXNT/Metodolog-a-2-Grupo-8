@@ -1,16 +1,19 @@
-# Decisiones de diseño - Taller II
+# Decisiones de diseño y verificación — Talleres II y III
 
 ## Objetivo y alcance
 
 Este documento reúne las decisiones de diseño tomadas para viajes, costos,
 pasajeros, persistencia, autenticación y vehículos. Su objetivo es dejar una única memoria localizable
-para el Taller II: qué problema resuelve cada parte, qué código interviene, qué
+para los talleres II y III: qué problema resuelve cada parte, qué código interviene, qué
 alternativas consideramos, qué decidimos y cuáles son los beneficios y costos de
 esas decisiones.
 
 El documento se concentra en el backend porque allí están las reglas de negocio y
-los patrones de diseño. El frontend continúa como una plantilla de Vite y no se
-lo presenta como una funcionalidad terminada.
+los patrones de diseño. En el frontend, el [router](../frontend/src/router/AppRouter.jsx)
+permite consultar viajes públicamente y protege la publicación y la gestión de
+vehículos. El [cliente HTTP](../frontend/src/api/client.js) conecta las pantallas
+con Express y adjunta el token a las solicitudes autenticadas. La API verifica
+los permisos del conductor y del pasajero.
 
 ## Resumen de decisiones
 
@@ -438,7 +441,8 @@ estrategia de revocación y protección frente a intentos repetidos de login.
 
 ## Decisiones de alcance y deuda conocida
 
-- El frontend todavía es la plantilla inicial y no consume la API.
+- La interfaz permite elegir ubicaciones y cargar paradas. El mapa interactivo
+  queda pendiente. El backend ya puede consultar Mapbox para calcular distancias.
 - Los JWT no tienen refresh ni revocación anticipada; es suficiente para el MVP
   académico, no para producción.
 - PostgreSQL protege cada actualización del viaje, pero la secuencia completa
