@@ -182,6 +182,17 @@ La batería compartida comprueba que memoria y PostgreSQL respeten el mismo
 contrato. También verifica el rollback de la transacción que reemplaza los
 pasajeros de un viaje.
 
+En Bash, usá `unset DATABASE_URL` para la corrida en memoria y
+`export DATABASE_URL="postgresql://grupo8:<POSTGRES_PASSWORD>@localhost:5432/viajes_test"`
+para la corrida con PostgreSQL. Reemplazá el marcador por la contraseña local.
+
+Desde `backend/`, ejecutá `npm run lint` y `npm run test:coverage`. La cobertura
+usa la misma selección de base que `npm test`. Desde `frontend/`, ejecutá
+`npm run lint` y `npm run build`.
+
+- [Guía de pruebas](docs/testing.md): casos normales, límites y errores, y cómo interpretar los resultados.
+- [Revisión de calidad](docs/calidad.md): hallazgos de ESLint, cobertura y revisión de dependencias.
+
 ## Alcance del MVP académico
 
 El MVP permite, desde el navegador, registrarse, crear un vehículo,
