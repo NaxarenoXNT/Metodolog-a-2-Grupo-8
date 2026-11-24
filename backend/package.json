@@ -11,7 +11,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "migrate": "node scripts/migrar.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude=test/** --test-coverage-exclude=test-helpers/**"
   },
   "keywords": [],
   "type": "commonjs",
