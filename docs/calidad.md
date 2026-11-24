@@ -6,7 +6,7 @@ Evidencia de revisión y mejora de calidad del **backend** (Node.js, CommonJS).
 El frontend ya tenía ESLint; el backend no tenía ninguna herramienta, así que
 esta tarea agrega lint, medición de cobertura y revisión de dependencias.
 
-- Pull request de esta tarea: _PENDIENTE: completar con el enlace del PR_
+- Pull request de esta tarea: https://github.com/NaxarenoXNT/Metodolog-a-2-Grupo-8/pull/14
 
 ### Herramientas y comandos
 

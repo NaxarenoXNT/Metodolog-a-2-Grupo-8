@@ -1,32 +1,32 @@
-// ESLint flat config (CommonJS) for the backend.
-// Run with: npm run lint
+// Configuración flat de ESLint (CommonJS) para el backend.
+// Se ejecuta con: npm run lint
 const { defineConfig, globalIgnores } = require('eslint/config');
 const js = require('@eslint/js');
 const globals = require('globals');
 
 module.exports = defineConfig([
-  // Folders ESLint must never analyze: third-party code and generated reports.
+  // Carpetas que ESLint nunca debe analizar: código de terceros e informes generados.
   globalIgnores(['node_modules', 'coverage']),
   {
-    // Apply to every JavaScript file in the backend.
+    // Se aplica a todos los archivos JavaScript del backend.
     files: ['**/*.js'],
-    // Base ruleset: ESLint's recommended rules (likely bugs, not style).
+    // Reglas base: el conjunto recomendado de ESLint (posibles bugs, no estilo).
     extends: [js.configs.recommended],
     languageOptions: {
-      // The backend uses require/module.exports, not ES modules.
+      // El backend usa require/module.exports, no módulos ES.
       sourceType: 'commonjs',
-      // Declare Node.js globals (process, __dirname, require...) so they are not flagged as undefined.
+      // Declara los globales de Node.js (process, __dirname, require...) para que no se marquen como indefinidos.
       globals: globals.node,
     },
     rules: {
       'no-unused-vars': [
         'error',
         {
-          // Parameters prefixed with "_" are intentionally unused
-          // (e.g. to respect an interface contract).
+          // Los parámetros que empiezan con "_" quedan sin usar a propósito
+          // (por ejemplo, para respetar el contrato de una interfaz).
           argsIgnorePattern: '^_',
-          // Ignore siblings of a rest element: `const { secret, ...safe } = obj`
-          // is the standard way to omit a property.
+          // Ignora las propiedades hermanas de un rest: `const { secreto, ...seguro } = obj`
+          // es la forma habitual de omitir una propiedad.
           ignoreRestSiblings: true,
         },
       ],
