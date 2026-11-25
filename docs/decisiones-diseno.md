@@ -1,16 +1,19 @@
-# Decisiones de diseño - Taller II
+# Decisiones de diseño y verificación — Talleres II y III
 
 ## Objetivo y alcance
 
 Este documento reúne las decisiones de diseño tomadas para viajes, costos,
 pasajeros, persistencia, autenticación y vehículos. Su objetivo es dejar una única memoria localizable
-para el Taller II: qué problema resuelve cada parte, qué código interviene, qué
+para los talleres II y III: qué problema resuelve cada parte, qué código interviene, qué
 alternativas consideramos, qué decidimos y cuáles son los beneficios y costos de
 esas decisiones.
 
 El documento se concentra en el backend porque allí están las reglas de negocio y
-los patrones de diseño. El frontend continúa como una plantilla de Vite y no se
-lo presenta como una funcionalidad terminada.
+los patrones de diseño. En el frontend, el [router](../frontend/src/router/AppRouter.jsx)
+permite consultar viajes públicamente y protege la publicación y la gestión de
+vehículos. El [cliente HTTP](../frontend/src/api/client.js) conecta las pantallas
+con Express y adjunta el token a las solicitudes autenticadas. La API verifica
+los permisos del conductor y del pasajero.
 
 ## Resumen de decisiones
 
@@ -438,7 +441,8 @@ estrategia de revocación y protección frente a intentos repetidos de login.
 
 ## Decisiones de alcance y deuda conocida
 
-- El frontend todavía es la plantilla inicial y no consume la API.
+- La interfaz permite elegir ubicaciones y cargar paradas. El mapa interactivo
+  queda pendiente. El backend ya puede consultar Mapbox para calcular distancias.
 - Los JWT no tienen refresh ni revocación anticipada; es suficiente para el MVP
   académico, no para producción.
 - PostgreSQL protege cada actualización del viaje, pero la secuencia completa
@@ -449,17 +453,15 @@ estrategia de revocación y protección frente a intentos repetidos de login.
 
 ## Verificación reproducible
 
-Desde el repositorio:
+Desde la raíz, con Node.js 22.13 o superior y las dependencias del lockfile:
 
 ```bash
 cd backend
 npm ci
+unset DATABASE_URL
 npm test
-
-# Con PostgreSQL de pruebas ya migrado (PowerShell)
-$env:DATABASE_URL="postgresql://grupo8:<POSTGRES_PASSWORD>@localhost:5432/viajes_test"
-npm run migrate
-npm test
+npm run lint
+npm run test:coverage
 
 cd ../frontend
 npm ci
@@ -467,15 +469,18 @@ npm run lint
 npm run build
 ```
 
-Usar Node.js 22.13 o superior. Las pruebas que usan PostgreSQL solo deben apuntar
-a una base cuyo nombre termine en `_test`.
+En PowerShell, reemplazar `unset DATABASE_URL` por
+`Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue`. Para verificar el
+contrato PostgreSQL, configurar y migrar `viajes_test` según el
+[README](../README.md#migraciones-y-pruebas).
 
-En la verificación del 12 de noviembre de 2026, `npm run lint` del frontend
-pasó. El build no se considera verificado porque la terminal disponible usa
-Node.js 20.18 y Rolldown no pudo cargar su dependencia nativa opcional de
-Windows. El proyecto exige Node.js 22.13; corresponde seleccionar esa versión,
-ejecutar un `npm ci` limpio y repetir `npm run build`, sin agregar al repositorio
-un binding específico de plataforma.
+El 24 de noviembre de 2026, con Node.js 24.22.3 en Windows, pasaron las
+106 pruebas en memoria. La cobertura de líneas del backend fue del 79,45 %.
+ESLint pasó en ambos proyectos y Vite generó el build de producción tras
+instalar las dependencias opcionales con npm bajo la misma versión de Node.
+La corrida con PostgreSQL está documentada por separado en la
+[revisión de calidad](calidad.md). La [guía de pruebas](testing.md) explica
+qué casos adicionales se ejecutan con la base de pruebas.
 
 La evidencia principal para la evaluación es el código enlazado y las pruebas;
 este documento explica las decisiones, pero no reemplaza poder recorrer y
