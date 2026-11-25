@@ -1,0 +1,124 @@
+.publicar-page {
+  display: grid;
+  gap: 20px;
+  padding-block: 32px;
+}
+
+.publicar-page h1 {
+  margin: 10px 0 0;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.publicar-page select.field__input,
+.publicar-page input.field__input {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.publicar-page select.field__input:focus-visible,
+.publicar-page input.field__input:focus-visible {
+  outline: 3px solid rgba(232, 111, 69, 0.38);
+  outline-offset: 2px;
+}
+
+.publicar-enlace {
+  color: var(--brand);
+  font-weight: 800;
+  text-underline-offset: 3px;
+}
+
+.publicar-card {
+  padding: clamp(20px, 4vw, 32px);
+}
+
+.publicar-form {
+  display: grid;
+  gap: 20px;
+}
+
+.publicar-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.publicar-grid__ancho {
+  grid-column: 1 / -1;
+}
+
+.publicar-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .publicar-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.paradas {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.paradas__titulo {
+  padding-inline: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.paradas__vacio {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.paradas > .button {
+  justify-self: start;
+}
+
+.paradas__lista {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.parada {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.parada__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.parada__campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .parada__campos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

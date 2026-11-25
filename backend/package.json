@@ -4,12 +4,15 @@
   "description": "",
   "main": "index.js",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.13.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test",
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "migrate": "node scripts/migrar.js",
+    "lint": "eslint .",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude=test/** --test-coverage-exclude=test-helpers/**"
   },
   "keywords": [],
   "type": "commonjs",
@@ -22,6 +25,10 @@
     "pg": "^8.23.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.3.1"
   }
 }

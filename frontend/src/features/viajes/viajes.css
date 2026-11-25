@@ -1,0 +1,209 @@
+.viajes-page {
+  display: grid;
+  gap: 20px;
+  padding-block: 32px;
+}
+
+.viajes-page h1 {
+  margin: 10px 0 0;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: end;
+  gap: 14px;
+}
+
+.viajes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 18px;
+}
+
+.viajes-vacio {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.viaje-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 22px;
+}
+
+.viaje-card__ruta {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.viaje-card__datos {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  list-style: none;
+}
+
+.viaje-card .button {
+  margin-top: auto;
+}
+
+.estado {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.estado--pendiente {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.estado--cancelado {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.detalle-volver,
+.detalle-volver-link {
+  justify-self: start;
+}
+
+.detalle-volver-link {
+  color: var(--brand);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.detalle-card {
+  display: grid;
+  gap: 16px;
+  padding: clamp(20px, 4vw, 32px);
+}
+
+.detalle-card > .estado {
+  justify-self: start;
+}
+
+.detalle-card h1,
+.detalle-card h2 {
+  margin: 0;
+}
+
+.detalle-card__ruta {
+  font-size: clamp(26px, 5vw, 38px);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+
+.detalle-card h2 {
+  font-size: 18px;
+}
+
+.detalle-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 14px;
+  margin: 0;
+}
+
+.detalle-datos dt {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.detalle-datos dd {
+  margin: 4px 0 0;
+  font-weight: 600;
+}
+
+.detalle-seccion {
+  display: grid;
+  gap: 10px;
+}
+
+.paradas-lista {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.pasajeros-lista {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pasajeros-lista li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.pasajeros-lista__km {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.sumarme-form {
+  display: grid;
+  gap: 14px;
+}
+
+.sumarme-form .button {
+  justify-self: start;
+}
+
+.pasajeros-lista__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.division-modos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.division-cargando {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.division-total {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}

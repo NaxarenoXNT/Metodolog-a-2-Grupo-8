@@ -6,9 +6,13 @@ Para instrucciones completas de instalación y ejecución, ver el [README princi
 
 ## Levantar en modo desarrollo
 
+Desde `frontend/`, con la API en ejecución y Node.js 22.13 o superior,
+copiar `.env.example` a `.env` con `Copy-Item .env.example .env` en
+PowerShell o `cp .env.example .env` en Bash. La URL predeterminada de la API
+es `http://localhost:3000`.
+
 ```bash
-npm install
-copy .env.example .env   # Windows (en Linux/macOS: cp .env.example .env)
+npm ci
 npm run dev
 ```
 
