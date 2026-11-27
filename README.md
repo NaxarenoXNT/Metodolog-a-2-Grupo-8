@@ -67,8 +67,18 @@ aparece `Copy-Item .env.example .env`. Copiá los ejemplos solo la primera vez.
 
 Desde la raíz del repositorio:
 
+Windows (PowerShell):
+
 ```powershell
 Copy-Item .env.example .env
+# Completar POSTGRES_PASSWORD en .env
+docker compose up -d
+```
+
+Linux y macOS (Bash o Zsh):
+
+```bash
+cp .env.example .env
 # Completar POSTGRES_PASSWORD en .env
 docker compose up -d
 ```
@@ -77,9 +87,19 @@ El contenedor crea las bases `viajes` y `viajes_test`.
 
 ### 2. Configurar el backend
 
+Windows (PowerShell):
+
 ```powershell
 cd backend
 Copy-Item .env.example .env
+npm ci
+```
+
+Linux y macOS (Bash o Zsh):
+
+```bash
+cd backend
+cp .env.example .env
 npm ci
 ```
 
@@ -95,7 +115,16 @@ MAPBOX_API_KEY=
 
 Aplicar las migraciones y levantar el servidor:
 
+Windows (PowerShell):
+
 ```powershell
+npm run migrate
+npm run dev
+```
+
+Linux y macOS (Bash o Zsh):
+
+```bash
 npm run migrate
 npm run dev
 ```
@@ -107,9 +136,20 @@ El backend queda disponible en `http://localhost:3000`. El endpoint
 
 En otra terminal:
 
+Windows (PowerShell):
+
 ```powershell
 cd frontend
 Copy-Item .env.example .env
+npm ci
+npm run dev
+```
+
+Linux y macOS (Bash o Zsh):
+
+```bash
+cd frontend
+cp .env.example .env
 npm ci
 npm run dev
 ```
@@ -164,16 +204,36 @@ que puede ejecutarse nuevamente sin repetir migraciones.
 
 Pruebas en memoria:
 
+Windows (PowerShell):
+
 ```powershell
 cd backend
 Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
 npm test
 ```
 
+Linux y macOS (Bash o Zsh):
+
+```bash
+cd backend
+unset DATABASE_URL
+npm test
+```
+
 Migración y pruebas con PostgreSQL:
+
+Windows (PowerShell):
 
 ```powershell
 $env:DATABASE_URL="postgresql://grupo8:<POSTGRES_PASSWORD>@localhost:5432/viajes_test"
+npm run migrate
+npm test
+```
+
+Linux y macOS (Bash o Zsh):
+
+```bash
+export DATABASE_URL="postgresql://grupo8:<POSTGRES_PASSWORD>@localhost:5432/viajes_test"
 npm run migrate
 npm test
 ```
