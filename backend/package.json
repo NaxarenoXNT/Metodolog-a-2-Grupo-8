@@ -12,6 +12,7 @@
     "dev": "nodemon index.js",
     "migrate": "node scripts/migrar.js",
     "lint": "eslint .",
+    "check": "npm run lint && npm test",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude=test/** --test-coverage-exclude=test-helpers/**"
   },
   "keywords": [],
