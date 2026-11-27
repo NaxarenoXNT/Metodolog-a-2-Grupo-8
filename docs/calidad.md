@@ -113,6 +113,32 @@ porque:
 | Frontend `npm run lint` | 0 errores |
 | Frontend `npm run build` | OK |
 
+### Verificación automatizada (CI)
+
+Hasta ahora, correr lint, tests y build antes de un PR dependía de que cada
+integrante se acordara. El workflow
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) lo hace automático en
+cada push y cada pull request a `dev` o `main`.
+
+Qué corre:
+
+- Dos jobs en paralelo sobre `ubuntu-latest`: `backend` y `frontend`.
+- Cada uno instala Node.js con la versión de `.nvmrc`, ejecuta `npm ci` y después
+  `npm run check`.
+- En `backend/`, `check` es `npm run lint && npm test`. En `frontend/`, es
+  `npm run lint && npm run build`. Si el lint falla, el job se corta ahí.
+
+Usa **los mismos scripts que en local**, así que un check en verde en la máquina
+de un integrante debería dar el mismo resultado en CI. No requiere base de
+datos: el job del backend no define `DATABASE_URL`, por lo que corren los
+**106 tests** en memoria.
+
+Qué **no** hace:
+
+- No corre los **24 tests de PostgreSQL**. Esa parte se sigue verificando en
+  local contra `viajes_test` (ver [testing.md](testing.md#con-postgresql)).
+- No despliega: solo verifica.
+
 ### Mejoras ya realizadas en el Taller II
 
 Resumen; el detalle está en
