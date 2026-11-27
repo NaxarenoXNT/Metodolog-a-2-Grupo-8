@@ -13,6 +13,12 @@ const formatoMonto = new Intl.NumberFormat('es-AR', {
   currency: 'ARS',
 })
 
+// Formato argentino (coma decimal, punto de miles) con hasta 2 decimales, para
+// que 208.584 no se lea como "doscientos ocho mil".
+const formatoDistancia = new Intl.NumberFormat('es-AR', {
+  maximumFractionDigits: 2,
+})
+
 export function mismoId(a, b) {
   if (a === undefined || a === null || b === undefined || b === null) {
     return false
@@ -61,7 +67,7 @@ export function formatearDistancia(distanciaKm) {
     return 'Distancia no calculada'
   }
 
-  return `${distanciaKm} km`
+  return `${formatoDistancia.format(distanciaKm)} km`
 }
 
 export function nombreUbicacion({ lat, lng }) {
