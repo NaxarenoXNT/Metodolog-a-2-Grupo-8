@@ -125,6 +125,21 @@ npm run lint
 - Qué miden y qué no garantizan, con los resultados antes y después, está en
   [`calidad.md`](calidad.md).
 
+### Todo junto: `npm run check`
+
+```bash
+cd backend
+npm run check   # npm run lint && npm test
+```
+
+Encadena lint y tests: si el lint falla, los tests no se ejecutan. Usa la misma
+selección de base que `npm test`, así que sin `DATABASE_URL` corre los 106 tests
+en memoria. En `frontend/`, `npm run check` encadena `npm run lint` y
+`npm run build`.
+
+Es lo mismo que ejecuta el workflow de CI en cada push y PR a `dev` o `main`
+(detalle en [`calidad.md`](calidad.md#verificación-automatizada-ci)).
+
 ### Qué significa que se salteen los tests de PostgreSQL
 
 Sin `DATABASE_URL` (o si no termina en `_test`), el bloque

@@ -190,6 +190,11 @@ Desde `backend/`, ejecutá `npm run lint` y `npm run test:coverage`. La cobertur
 usa la misma selección de base que `npm test`. Desde `frontend/`, ejecutá
 `npm run lint` y `npm run build`.
 
+Para correr todas las verificaciones de una vez, ejecutá `npm run check` en cada
+carpeta. En `backend/` encadena `npm run lint` y `npm test`; en `frontend/`,
+`npm run lint` y `npm run build`. Si el lint falla, se corta ahí. Son los mismos
+scripts que ejecuta el workflow de CI.
+
 - [Guía de pruebas](docs/testing.md): casos normales, límites y errores, y cómo interpretar los resultados.
 - [Revisión de calidad](docs/calidad.md): hallazgos de ESLint, cobertura y revisión de dependencias.
 
@@ -213,5 +218,8 @@ Quedan fuera del alcance actual:
 2. `dev` es la rama de integración.
 3. El desarrollo se realiza en ramas `feature/*` creadas desde `dev`.
 4. Antes de abrir un PR se hace `git fetch`, `git rebase origin/dev` y se
-   ejecutan las pruebas.
-5. Cada PR requiere la revisión de al menos un integrante.
+   ejecuta `npm run check` en `backend/` y en `frontend/`.
+5. Cada push y cada PR a `dev` o `main` ejecuta el workflow de CI
+   ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). El check debe estar
+   en verde antes de mergear.
+6. Cada PR requiere la revisión de al menos un integrante.
